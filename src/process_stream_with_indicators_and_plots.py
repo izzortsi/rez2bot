@@ -192,10 +192,13 @@ def compute_indicators(klines, w1=12, w2=26, w3=9, w_atr = 8, step=0.4):
     return macd_hist, atr, atr_grid, close_ema
 
 w_atr = 8 # ATR window
-hist, atr, atr_grid, close_ema = compute_indicators(df, w1=12, w2=26, w3=9, w_atr = w_atr, step=0.10)
+hist, atr, atr_grid, close_ema = compute_indicators(df, w1=12, w2=26, w3=9, w_atr = w_atr, step=0.15)
 
 # %%
 # klines.update(klines.iloc[:, 2:].astype(float))
+
+
+
 
 
 
@@ -213,7 +216,7 @@ fig = make_subplots(rows=3, cols=4,
 # fig = make_subplots(rows=2, cols=1, shared_xaxes=True)
 
 # %%
-
+df = buffer.data_window
 kl_go = go.Candlestick(x=df['init_ts'],
                 open=df['open'],
                 high=df['high'],
@@ -293,6 +296,8 @@ fig.update_layout(
     ),
     paper_bgcolor="LightSteelBlue",
 )
+
+# %%
 
 
 # fig.update_layout({'plot_bgcolor': "#21201f", 'paper_bgcolor': "#21201f", 'legend_orientation': "h"},
@@ -489,3 +494,8 @@ fig.update_layout(hovermode="x unified")
 
 fig.update_traces(xaxis='x')
 fig.show()
+!!
+
+!!
+
+!!
