@@ -1,4 +1,3 @@
-
 # %%
 
 from binance import Client, ThreadedWebsocketManager

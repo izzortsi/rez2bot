@@ -27,19 +27,19 @@ position_info = client.futures_position_information(symbol="ADAUSDT")
 print(position_info)
 # %%
 
-order = client.create_test_order(
-    symbol='BNBBTC',
-    side=Client.SIDE_BUY,
-    type=Client.ORDER_TYPE_MARKET,
-    quantity=100)
+# order = client.create_test_order(
+#     symbol='BNBBTC',
+#     side=Client.SIDE_BUY,
+#     type=Client.ORDER_TYPE_MARKET,
+#     quantity=100)
 # %%
 #parameters
-client
-tp
-sl
-gridstep
-last_price
-atr_bands
+# client
+# tp
+# sl
+# gridstep
+# last_price
+# atr_bands
 # %%
-class OrderHandler(Thread):
-    def __init__(self, *args, **kwargs):
+# class OrderHandler(Thread):
+#     def __init__(self, *args, **kwargs):
