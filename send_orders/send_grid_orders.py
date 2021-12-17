@@ -20,17 +20,11 @@ tdelta = t0 - t1
 tdelta
 # %%
 # client.get_account_snapshot(type='FUTURES', recvWindow=37000)
-position_info = client.futures_position_information(symbol="ADAUSDT", recvWindow=37000)
+# position_info = client.futures_position_information(symbol="ADAUSDT", recvWindow=37000)
+acc_info = client.futures_account()
+position_info = client.futures_position_information(symbol="ADAUSDT")
 # %%
-position_info
-# %%
-
-# client.get_historical_klines("BTCUSDT", Client.KLINE_INTERVAL_1MINUTE, "1 day ago UTC")
-# %%
-client.futures_account()
-
-# %%
-pos_info
+print(position_info)
 # %%
 
 order = client.create_test_order(
