@@ -74,8 +74,6 @@ class ThreadedTAHandler(threading.Thread):
 
         self.summary = summary
 
-# %%
-
 
 # # %%
 # th = ThreadedTAHandler("bnbusdt", ["1m", "5m"], 60)
