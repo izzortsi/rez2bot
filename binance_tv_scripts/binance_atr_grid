@@ -1,0 +1,43 @@
+#@version = 1
+study(title="ATR bands",overlay=True)
+length = input(8, type="int")
+src = input(close, title="Source",type="source")
+# mult = input(0.618, type="float", title="StdDev")
+# gridstep = input(0.12, type="float", title="grid step")
+# gridwidth = input(2.618, type="float", title="grid width")
+init_mult = 0.618
+gridstep = 0.10
+gridwidth = 2.618
+
+basis = ema(src, length)
+avgtr = atr(length)
+# dev = mult * stdev(src, length)
+
+def plot_bands(basis, avgtr, mult, step, width):
+    for i in range(mult, width, step):
+        dev = i * avgtr
+        upper = basis + dev
+        lower = basis - dev
+        if 1.518 <= i and i < 1.618:
+            p1 = plot(upper, "Upper", color="#872323", linewidth=2)
+            p2 = plot(lower, "Lower", color="#872323", linewidth=2)
+            fill(p1, p2, title = "Background", color=color("yellow", 85))
+        else:
+            # p1 = plot(upper, "Upper", color="teal")
+            # p2 = plot(lower, "Lower", color="teal")
+            plot(upper, "Upper", color="teal")
+            plot(lower, "Lower", color="teal")
+        # return p1, p2
+
+
+plot(basis, "Basis", color="#872323")
+plot_bands(basis, avgtr, 0.618, 0.12, 2.618)
+# p1, p2 = plot_bands(basis, avgtr, 0.618, 0.12, 2.618)
+# fill(p1, p2, title = "Background", color=color("#198787",75))
+# dev = mult * avgtr
+# upper = basis + dev
+# lower = basis - dev
+# plot(basis, "Basis", color="#872323")
+# p1 = plot(upper, "Upper", color="teal")
+# p2 = plot(lower, "Lower", color="teal")
+# fill(p1, p2, title = "Background", color=color("#198787",75))
