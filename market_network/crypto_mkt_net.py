@@ -1,19 +1,12 @@
 # %%
-from sklearn import cluster, covariance, manifold
-from matplotlib.collections import LineCollection
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pandas_ta as ta
-import pandas_bokeh
+
 
 from pandas import DataFrame as df
 from pycoingecko import CoinGeckoAPI
 
-# %%
-pd.set_option("plotting.backend", "pandas_bokeh")
-pandas_bokeh.output_notebook()
-# %%
 
 cg = CoinGeckoAPI()
 
@@ -88,7 +81,10 @@ def process_request(response):
     coins_data = []
 
     for coin_dict in response:
-        coins_data.append(get_filtered_dict(coin_dict))
+        fdict = get_filtered_dict(coin_dict)
+        dF = df(fdict)
+        # coins_data.append(get_filtered_dict((coin_dict, dF))
+        coins_data.append(dF)
 
     return coins_data
 
@@ -97,46 +93,30 @@ def process_request(response):
 coins_data = process_request(coins_mkts)
 
 # %%
-data_array = np.array([np.array(
-    [*[*coin_data.values()][0].values()], dtype=object) for coin_data in coins_data])
-# %%
-
-# %%
-data_array[0]
-# %%
-
-prices_array = np.array([np.array([*coin_data.values()][0]["price"])
-                         for coin_data in coins_data], dtype=object)
-
-# %%
-prices_array
-
-# %%
-
-len(prices_array)
-
-# %%
-len(prices_array[0])
-len(prices_array[1])
-# %%
-X
-
-# %%
-
-
-edge_model = covariance.GraphicalLassoCV()
-
-# standardize the time series: using correlations rather than covariance
-# is more efficient for structure recovery
-X = prices_array.copy()
-X /= X.std(axis=0)
-edge_model.fit(X)
+coins_data
 
 
 # %%
-coins_data[0]
+def make_df(coins_data):
+    ovdf = coins_data.loc(["market_cap_rank",
+                    "ath_change_percentage",
+                    "atl_change_percentage",
+                    "price_change_percentage_1h_in_currency",
+                    "price_change_percentage_24h_in_currency", 
+                    "price_change_percentage_7d_in_currency",
+                    "current_price",
+                    "high_24h",
+                    "low_24h",
+                    "market_cap",
+                    "market_cap_change_percentage_24h",
+                    "market_cap_rank",
+                    "supply_ratio",
+                    "total_volume",
+                    ])
+# df(coins_data, columns=)
 
 
 # %%
 
 # %%
+dF
