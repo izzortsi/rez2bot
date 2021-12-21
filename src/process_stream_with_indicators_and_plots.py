@@ -104,7 +104,7 @@ class RingBuffer:
 
 
 symbol = "ETHUSDT"
-interval = Client.KLINE_INTERVAL_1MINUTE
+interval = Client.KLINE_INTERVAL_15MINUTE
 fromdate = "15 Dec, 2021"
 
 
