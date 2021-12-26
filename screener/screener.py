@@ -100,41 +100,13 @@ class RingBuffer:
         #                 )            
 
 
-# %%
 
-
-symbol = "ETHUSDT"
 interval = Client.KLINE_INTERVAL_1HOUR
-fromdate = "15 Dec, 2021"
-
-
-window_length = 64
-
-# %%
-
-# klines = client.get_historical_klines("ETHUSDT", Client.KLINE_INTERVAL_1HOUR, "1 Dec, 2021")
-# klines = client.futures_historical_klines(symbol, interval, fromdate, limit=window_length)
-klines = client.futures_historical_klines(symbol, interval, fromdate)
-klines = process_futures_klines(klines)
-# klines
-
-
-# len(klines)
-
-
-
-
-data_window = klines.tail(window_length)
-data_window.index = range(window_length)
-# data_window
-
-buffer = RingBuffer(window_length, interval, data_window)
-
+fromdate = "17 Dec, 2021"
+window_length = 49
 
 import pandas as pd
 from datetime import datetime
-
-df = buffer.data_window
 
 def compute_indicators(klines, w1=12, w2=26, w3=9, w_atr = 8, step=0.4):
     # compute macd
@@ -161,20 +133,7 @@ def compute_indicators(klines, w1=12, w2=26, w3=9, w_atr = 8, step=0.4):
     
     return macd_hist, atr, inf_grid, sup_grid, close_ema, atr_grid
 
-w_atr = 8 # ATR window
-hist, atr, inf_grid, sup_grid, close_ema, atr_grid = compute_indicators(df, w1=12, w2=26, w3=9, w_atr = w_atr, step=0.15)
 
-# %%
-# klines.update(klines.iloc[:, 2:].astype(float))
-# for band in atr_grid: print(band.iloc[-1])
-# %%
-
-df.hist
-# %%
-
-
-
-df = buffer.data_window
 
 #generating signals
 def generate_signal(df, hist, inf_grid, sup_grid):
@@ -183,37 +142,110 @@ def generate_signal(df, hist, inf_grid, sup_grid):
 
         if (
             (df.close.iloc[-1] <= inf_band.iloc[-1]) 
-            and (hist.iloc[-1] > hist.iloc[-2])
+            # and (hist.iloc[-1] > hist.iloc[-2])
             ):
             signal = 1
         elif (
             (df.close.iloc[-1] >= sup_band.iloc[-1]) 
-            and (hist.iloc[-1] < hist.iloc[-2])
+            # and (hist.iloc[-1] < hist.iloc[-2])
             ):
             signal = -1
     return signal
 
 # %%
-signal = generate_signal(df, hist, inf_grid, sup_grid)
 
-# %%
-signal
-# %%
+all_stats = client.futures_ticker()
 
-#%%
-
-#%%
-
-#%%
-all_stats = client.futures_coin_ticker()
-# %%
 all_stats
+
+
+# perps = [symbol_data if "USDT" in symbol_data["symbol"] else None for symbol_data in all_stats]
+
+# %%
+def process_all_stats(all_stats):
+    perps = [pd.DataFrame.from_records([symbol_data]) for symbol_data in all_stats]
+    return perps
+# %%
+perps = process_all_stats(all_stats)
+
+# %%
+
+len(perps)
+
+# %%
+perps[0].symbol
+# %%
+#compute price position and check other stuff
+def filter_perps(perps):
+    screened_symbols = []
+    for row in perps:
+        if "USDT" in row.symbol.iloc[-1] and not("_" in row.symbol.iloc[-1]):
+            # screened_symbols.append(row)
+            price_position = (float(row.lastPrice.iloc[-1]) - float(row.lowPrice.iloc[-1]))/(float(row.highPrice.iloc[-1]) - float(row.lowPrice.iloc[-1]))
+            # print(price_position)
+            if (price_position < 0.25 or price_position > 0.75):# and float(row.priceChangePercent.iloc[-1]) >= -2.0:
+            # if float(row.priceChangePercent.iloc[-1]) >= -1:
+                # print(price_position)
+                screened_symbols.append(row)
+    return screened_symbols
+# %%
+perps
+
+# %%
+filtered_perps = filter_perps(perps)
+
+filtered_perps = pd.concat(filtered_perps, axis=0)
+# %%
+filtered_perps
+
+# %%
+# filtered_perps.pair
+# signals = {symbol: 0 for symbol in filtered_perps.pair}
+
+# %%
+# signals
+# %%
+def do_the_data_stuff(symbols, interval, fromdate):
+    # usdt_pairs = [f"{symbol}T" for symbol in symbols.pair]
+    signals = {}
+    for symbol in symbols.symbol:
+        # print(symbol)
+        # print(type(symbol))
+        klines = client.futures_historical_klines(symbol, interval, fromdate)
+        klines = process_futures_klines(klines)
+
+        data_window = klines.tail(window_length)
+        data_window.index = range(window_length)
+# data_window
+
+        buffer = RingBuffer(window_length, interval, data_window)
+        df = buffer.data_window
+
+        w_atr = 8 # ATR window
+
+        hist, atr, inf_grid, sup_grid, close_ema, atr_grid = compute_indicators(df, w1=12, w2=26, w3=9, w_atr = w_atr, step=0.15)
+        signal = generate_signal(df, hist, inf_grid, sup_grid)
+        if signal != 0:
+            signals[symbol] = signal
+            print(signal)
+        # signals[symbol] = [signal, df]    
+    return signals
+
+
+# %%
+signals = do_the_data_stuff(filtered_perps, interval, fromdate)
+
+# %%
+signals
+
 # %%
 
 
-
+# %%
 
 # %%
+
+
 # %%
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
