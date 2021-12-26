@@ -102,7 +102,7 @@ class RingBuffer:
 
 
 interval = Client.KLINE_INTERVAL_1HOUR
-fromdate = "23 Dec, 2021"
+fromdate = "20 Dec, 2021"
 window_length = 49
 
 import pandas as pd
@@ -185,7 +185,7 @@ def filter_perps(perps):
             price_position = (float(row.lastPrice.iloc[-1]) - float(row.lowPrice.iloc[-1]))/(float(row.highPrice.iloc[-1]) - float(row.lowPrice.iloc[-1]))
             # print(price_position)
             row["pricePosition"] = price_position
-            if (price_position < 0.45 or price_position > 0.65):# and float(row.priceChangePercent.iloc[-1]) >= -2.0:
+            if (price_position <= 0.15 or price_position >= 0.85):# and float(row.priceChangePercent.iloc[-1]) >= -2.0:
             # if float(row.priceChangePercent.iloc[-1]) >= -1:
                 # print(price_position)
                 screened_symbols.append(row)
