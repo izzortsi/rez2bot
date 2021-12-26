@@ -159,29 +159,35 @@ hist, atr, atr_grid, close_ema = compute_indicators(df, w1=12, w2=26, w3=9, w_at
 
 # %%
 # klines.update(klines.iloc[:, 2:].astype(float))
+# for band in atr_grid: print(band.iloc[-1])
+# %%
+
+df.hist
+# %%
+
 
 
 df = buffer.data_window
 
 #generating signals
-def generate_signal(df, atr_grid):
+def generate_signal(df, hist, atr_grid):
     signal = 0
-    for i, atr_band in enumerate(atr_grid):
+    for atr_band in atr_grid:
 
         if (
             (df.close.iloc[-1] <= atr_band.iloc[-1]) 
-            and (df.hist.iloc[-1] > df.hist.iloc[-2])
+            and (hist.iloc[-1] > hist.iloc[-2])
             ):
             signal = 1
         elif (
             (df.close.iloc[-1] >= atr_band.iloc[-1]) 
-            and (df.hist.iloc[-1] < df.hist.iloc[-2])
+            and (hist.iloc[-1] < hist.iloc[-2])
             ):
             signal = -1
     return signal
 
 # %%
-signal = generate_signal(df, atr_grid)
+signal = generate_signal(df, hist, atr_grid)
 
 # %%
 signal
@@ -192,3 +198,7 @@ signal
 #%%
 
 #%%
+all_stats = client.futures_coin_ticker()
+# %%
+all_stats
+# %%
