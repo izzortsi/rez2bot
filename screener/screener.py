@@ -149,16 +149,20 @@ def compute_indicators(klines, w1=12, w2=26, w3=9, w_atr = 8, step=0.4):
     sup_grid_coefs = np.array([1.0, 1.364, 1.618, 2.0, 2.364, 2.618])
     inf_grid_coefs = -1.0*sup_grid_coefs
 
-    # grid_coefs = np.concatenate((np.sort(inf_grid_coefs), sup_grid_coefs))
-    grid_coefs = sup_grid_coefs
+    
     close_ema = klines["close"].ewm(span=w_atr, min_periods=w_atr).mean()
-    # atr_grid = [close_ema + atr * coef for coef in grid_coefs]
+    
+    grid_coefs = np.concatenate((np.sort(inf_grid_coefs), sup_grid_coefs))
+    atr_grid = [close_ema + atr * coef for coef in grid_coefs]
+    
+    grid_coefs = sup_grid_coefs
     inf_grid = [close_ema - atr * coef for coef in grid_coefs]
     sup_grid = [close_ema + atr * coef for coef in grid_coefs]
-    return macd_hist, atr, inf_grid, sup_grid, close_ema
+    
+    return macd_hist, atr, inf_grid, sup_grid, close_ema, atr_grid
 
 w_atr = 8 # ATR window
-hist, atr, inf_grid, sup_grid, close_ema = compute_indicators(df, w1=12, w2=26, w3=9, w_atr = w_atr, step=0.15)
+hist, atr, inf_grid, sup_grid, close_ema, atr_grid = compute_indicators(df, w1=12, w2=26, w3=9, w_atr = w_atr, step=0.15)
 
 # %%
 # klines.update(klines.iloc[:, 2:].astype(float))
