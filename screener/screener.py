@@ -102,13 +102,13 @@ class RingBuffer:
 
 
 interval = Client.KLINE_INTERVAL_1HOUR
-fromdate = "17 Dec, 2021"
+fromdate = "23 Dec, 2021"
 window_length = 49
 
 import pandas as pd
 from datetime import datetime
 
-def compute_indicators(klines, w1=12, w2=26, w3=9, w_atr = 8, step=0.4):
+def compute_indicators(klines, w1=12, w2=26, w3=9, w_atr = 5, step=0.4):
     # compute macd
     macd = pd.Series(klines["close"].ewm(span=w1, min_periods=w1).mean() - klines["close"].ewm(span=w2, min_periods=w2).mean())
     macd_signal = macd.ewm(span=w3, min_periods=w3).mean()
@@ -118,7 +118,8 @@ def compute_indicators(klines, w1=12, w2=26, w3=9, w_atr = 8, step=0.4):
     atr = ta.atr(klines["high"], klines["low"], klines["close"], length=w_atr)
 
     # sup_grid_coefs = np.array([0.618, 1.0, 1.618, 2.0, 2.618])
-    sup_grid_coefs = np.array([1.0, 1.364, 1.618, 2.0, 2.364, 2.618])
+    # sup_grid_coefs = np.array([1.0, 1.364, 1.618, 2.0, 2.364, 2.618])
+    sup_grid_coefs = np.array([1.364, 1.618, 2.0, 2.364, 2.618])
     inf_grid_coefs = -1.0*sup_grid_coefs
 
     
@@ -183,7 +184,8 @@ def filter_perps(perps):
             # screened_symbols.append(row)
             price_position = (float(row.lastPrice.iloc[-1]) - float(row.lowPrice.iloc[-1]))/(float(row.highPrice.iloc[-1]) - float(row.lowPrice.iloc[-1]))
             # print(price_position)
-            if (price_position < 0.25 or price_position > 0.75):# and float(row.priceChangePercent.iloc[-1]) >= -2.0:
+            row["pricePosition"] = price_position
+            if (price_position < 0.45 or price_position > 0.65):# and float(row.priceChangePercent.iloc[-1]) >= -2.0:
             # if float(row.priceChangePercent.iloc[-1]) >= -1:
                 # print(price_position)
                 screened_symbols.append(row)
@@ -218,16 +220,16 @@ def do_the_data_stuff(symbols, interval, fromdate):
         data_window.index = range(window_length)
 # data_window
 
-        buffer = RingBuffer(window_length, interval, data_window)
-        df = buffer.data_window
-
+        # buffer = RingBuffer(window_length, interval, data_window)
+        # df = buffer.data_window
+        df = data_window
         w_atr = 8 # ATR window
 
         hist, atr, inf_grid, sup_grid, close_ema, atr_grid = compute_indicators(df, w1=12, w2=26, w3=9, w_atr = w_atr, step=0.15)
         signal = generate_signal(df, hist, inf_grid, sup_grid)
         if signal != 0:
             signals[symbol] = signal
-            print(signal)
+            print(symbol, ": ", signal)
         # signals[symbol] = [signal, df]    
     return signals
 
