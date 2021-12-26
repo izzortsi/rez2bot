@@ -1,22 +1,21 @@
-
-
-
 # %%
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+#%%
 
+# %%
 
-
-
-def plot_all(df, hist, atr, atr_grid, close_ema):
-    fig = make_subplots(rows=3, cols=4,
+fig = make_subplots(rows=3, cols=4,
         specs=[[{'rowspan': 2, 'colspan': 3}, None, None, {'rowspan': 2}],
         [None, None, None, None],
         [{'colspan': 3}, None, None, {}]],
         vertical_spacing=0.075,
         horizontal_spacing=0.08,
         shared_xaxes=True)
+#%%
+def plot_all(fig, df, hist, atr, atr_grid, close_ema):
+
     # fig = make_subplots(rows=2, cols=1, shared_xaxes=True)
 
     # %%
@@ -125,10 +124,11 @@ def plot_all(df, hist, atr, atr_grid, close_ema):
 
 
     fig.update_traces(xaxis='x')
-    fig.show()
-
+    return fig
 
 
 # %%
-# plot_all(df)
+
+fig = plot_all(fig, df, hist, atr, atr_grid, close_ema)
 #%%
+fig.show()
