@@ -138,9 +138,6 @@ def generate_signal(df, hist, inf_grid, sup_grid):
 
 # %%
 
-all_stats = client.futures_ticker()
-
-all_stats
 
 
 # perps = [symbol_data if "USDT" in symbol_data["symbol"] else None for symbol_data in all_stats]
@@ -150,7 +147,7 @@ def process_all_stats(all_stats):
     perps = [pd.DataFrame.from_records([symbol_data]) for symbol_data in all_stats]
     return perps
 # %%
-perps = process_all_stats(all_stats)
+
 
 # %%
 
@@ -173,22 +170,9 @@ def filter_perps(perps):
                 # print(price_position)
                 screened_symbols.append(row)
     return screened_symbols
-# %%
-perps
 
-# %%
-filtered_perps = filter_perps(perps)
 
-filtered_perps = pd.concat(filtered_perps, axis=0)
-# %%
-filtered_perps
 
-# %%
-# filtered_perps.pair
-# signals = {symbol: 0 for symbol in filtered_perps.pair}
-
-# %%
-# signals
 # %%
 def generate_market_signals(symbols, interval, fromdate):
     # usdt_pairs = [f"{symbol}T" for symbol in symbols.pair]
@@ -223,13 +207,19 @@ def generate_market_signals(symbols, interval, fromdate):
 
 
 # %%
-signals, rows = generate_market_signals(filtered_perps, interval, fromdate)
+def screen():
+    all_stats = client.futures_ticker()
+    perps = process_all_stats(all_stats)
+    filtered_perps = filter_perps(perps)
+    filtered_perps = pd.concat(filtered_perps, axis=0)
+    signals, rows = generate_market_signals(filtered_perps, interval, fromdate)
+    return signals, rows
 
 # %%
-signals
+# signals
 
 # %%
-rows
+# rows
 
 # %%
 

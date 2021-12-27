@@ -9,16 +9,10 @@ import pandas as pd
 
 from screener import *
 # %%
-
-signalsdf = pd.concat(rows, axis=1).transpose()
+signals, rows = screen()
 # %%
 
-signalsdf
-# %%
-
-df = signalsdf
-# %%
-
+df = pd.concat(rows, axis=1).transpose()
 
 app = dash.Dash(__name__)
 
