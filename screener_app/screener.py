@@ -3,16 +3,22 @@
 from binance import Client, ThreadedWebsocketManager
 from binance.enums import *
 from threading import Thread
+from datetime import datetime
 import numpy as np
 import pandas as pd
 import pandas_ta as ta
 import time
 import os
+import pandas as pd
 
 
 api_key = os.environ.get("API_KEY") 
 api_secret = os.environ.get("API_SECRET")
 client = Client(api_key, api_secret)
+
+interval = Client.KLINE_INTERVAL_1MINUTE
+fromdate = "28 Dec, 2021"
+window_length = 52
 
 
 def to_datetime_tz(arg, timedelta=-pd.Timedelta("03:00:00"), unit="ms", **kwargs):
@@ -84,14 +90,8 @@ class RingBuffer:
 
 
 
-interval = Client.KLINE_INTERVAL_1HOUR
-fromdate = "20 Dec, 2021"
-window_length = 49
 
-import pandas as pd
-from datetime import datetime
-
-def compute_indicators(klines, w1=12, w2=26, w3=9, w_atr = 5, step=0.4):
+def compute_indicators(klines, w1=12, w2=26, w3=9, w_atr = 8, step=0.4):
     # compute macd
     macd = pd.Series(klines["close"].ewm(span=w1, min_periods=w1).mean() - klines["close"].ewm(span=w2, min_periods=w2).mean())
     macd_signal = macd.ewm(span=w3, min_periods=w3).mean()
@@ -100,9 +100,9 @@ def compute_indicators(klines, w1=12, w2=26, w3=9, w_atr = 5, step=0.4):
 
     atr = ta.atr(klines["high"], klines["low"], klines["close"], length=w_atr)
 
-    # sup_grid_coefs = np.array([0.618, 1.0, 1.618, 2.0, 2.618])
+    sup_grid_coefs = np.array([0.618, 1.0, 1.364, 1.618, 2.0, 2.364, 2.618])
     # sup_grid_coefs = np.array([1.0, 1.364, 1.618, 2.0, 2.364, 2.618])
-    sup_grid_coefs = np.array([1.364, 1.618, 2.0, 2.364, 2.618])
+    # sup_grid_coefs = np.array([1.364, 1.618, 2.0, 2.364, 2.618])
     inf_grid_coefs = -1.0*sup_grid_coefs
 
     
@@ -136,26 +136,13 @@ def generate_signal(df, hist, inf_grid, sup_grid):
             signal = -1
     return signal
 
-# %%
 
 
 
-# perps = [symbol_data if "USDT" in symbol_data["symbol"] else None for symbol_data in all_stats]
-
-# %%
 def process_all_stats(all_stats):
     perps = [pd.DataFrame.from_records([symbol_data]) for symbol_data in all_stats]
     return perps
-# %%
 
-
-# %%
-
-# len(perps)
-
-# # %%
-# perps[0].symbol
-# %%
 #compute price position and check other stuff
 def filter_perps(perps):
     screened_symbols = []
@@ -165,15 +152,12 @@ def filter_perps(perps):
             price_position = (float(row.lastPrice.iloc[-1]) - float(row.lowPrice.iloc[-1]))/(float(row.highPrice.iloc[-1]) - float(row.lowPrice.iloc[-1]))
             # print(price_position)
             row["pricePosition"] = price_position
-            if (price_position <= 0.15 or price_position >= 0.85):# and float(row.priceChangePercent.iloc[-1]) >= -2.0:
+            if (price_position <= 0.35 or price_position >= 0.65):# and float(row.priceChangePercent.iloc[-1]) >= -2.0:
             # if float(row.priceChangePercent.iloc[-1]) >= -1:
                 # print(price_position)
                 screened_symbols.append(row)
     return screened_symbols
 
-
-
-# %%
 def generate_market_signals(symbols, interval, fromdate):
     # usdt_pairs = [f"{symbol}T" for symbol in symbols.pair]
     signals = {}
@@ -186,9 +170,11 @@ def generate_market_signals(symbols, interval, fromdate):
         # print(type(symbol))
         klines = client.futures_historical_klines(symbol, interval, fromdate)
         klines = process_futures_klines(klines)
-
+        print(f"len klines: {len(klines)}")
         data_window = klines.tail(window_length)
-        data_window.index = range(window_length)
+        # data_window.index = range(window_length)
+        print(f"len dw: {len(data_window)}")
+        data_window.index = range(len(data_window))
 # data_window
 
         # buffer = RingBuffer(window_length, interval, data_window)
@@ -206,7 +192,6 @@ def generate_market_signals(symbols, interval, fromdate):
     return signals, df
 
 
-# %%
 def screen():
     all_stats = client.futures_ticker()
     perps = process_all_stats(all_stats)
@@ -217,14 +202,19 @@ def screen():
 
 # %%
 # signals
+signals, rows = screen()
+# %%
+signals
+rows
+
 
 # %%
-# rows
+signals
 
 # %%
-
+sdf =pd.concat(rows, axis=1).transpose()
 # %%
-
+print(sdf)
 
 # %%
 
@@ -367,8 +357,3 @@ def screen():
 # fig.show()
 # #%%
 
-# #%%
-
-# #%%
-
-# #%%
