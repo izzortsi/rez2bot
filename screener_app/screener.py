@@ -1,5 +1,4 @@
 # %%
-
 from binance import Client, ThreadedWebsocketManager
 from binance.enums import *
 from threading import Thread
@@ -13,6 +12,11 @@ import os
 api_key = os.environ.get("API_KEY")
 api_secret = os.environ.get("API_SECRET")
 client = Client(api_key, api_secret)
+
+interval = Client.KLINE_INTERVAL_4HOUR
+fromdate = "19 Dec, 2021"
+window_length = 52
+minhigh, maxlow = 0.5, 0.5
 
 
 def to_datetime_tz(arg, timedelta=-pd.Timedelta("03:00:00"), unit="ms", **kwargs):
@@ -86,10 +90,6 @@ class RingBuffer:
         #                 )
 
 
-interval = Client.KLINE_INTERVAL_1HOUR
-fromdate = "20 Dec, 2021"
-window_length = 49
-
 import pandas as pd
 from datetime import datetime
 
@@ -127,45 +127,25 @@ def compute_indicators(klines, w1=12, w2=26, w3=9, w_atr=5, step=0.4):
 def generate_signal(df, hist, inf_grid, sup_grid):
     signal = 0
     for inf_band, sup_band in zip(inf_grid, sup_grid):
-
+        # print(hist.iloc[-1] > hist.iloc[-2])
         if (
-            df.close.iloc[-1]
-            <= inf_band.iloc[-1]
-            # and (hist.iloc[-1] > hist.iloc[-2])
-        ):
+            df.close.iloc[-1] <= inf_band.iloc[-1]
+        ):  # and (hist.iloc[-1] > hist.iloc[-2]):
             signal = 1
         elif (
-            df.close.iloc[-1]
-            >= sup_band.iloc[-1]
-            # and (hist.iloc[-1] < hist.iloc[-2])
-        ):
+            df.close.iloc[-1] >= sup_band.iloc[-1]
+        ):  # and (hist.iloc[-1] < hist.iloc[-2]):
             signal = -1
     return signal
 
 
-# %%
-
-
-# perps = [symbol_data if "USDT" in symbol_data["symbol"] else None for symbol_data in all_stats]
-
-# %%
 def process_all_stats(all_stats):
     perps = [pd.DataFrame.from_records([symbol_data]) for symbol_data in all_stats]
     return perps
 
 
-# %%
-
-
-# %%
-
-# len(perps)
-
-# # %%
-# perps[0].symbol
-# %%
 # compute price position and check other stuff
-def filter_perps(perps):
+def filter_perps(perps, minhigh, maxlow):
     screened_symbols = []
     for row in perps:
         if "USDT" in row.symbol.iloc[-1] and not ("_" in row.symbol.iloc[-1]):
@@ -176,7 +156,7 @@ def filter_perps(perps):
             # print(price_position)
             row["pricePosition"] = price_position
             if (
-                price_position <= 0.15 or price_position >= 0.85
+                price_position >= minhigh or price_position <= maxlow
             ):  # and float(row.priceChangePercent.iloc[-1]) >= -2.0:
                 # if float(row.priceChangePercent.iloc[-1]) >= -1:
                 # print(price_position)
@@ -184,8 +164,7 @@ def filter_perps(perps):
     return screened_symbols
 
 
-# %%
-def generate_market_signals(symbols, interval, fromdate):
+def generate_market_signals(symbols, interval, fromdate, w_atr=5):
     # usdt_pairs = [f"{symbol}T" for symbol in symbols.pair]
     signals = {}
     # df = pd.DataFrame.from_dict({})
@@ -199,14 +178,13 @@ def generate_market_signals(symbols, interval, fromdate):
         klines = process_futures_klines(klines)
 
         data_window = klines.tail(window_length)
-        data_window.index = range(window_length)
+        dw_len = len(data_window)
+        data_window.index = range(dw_len)
         # data_window
 
         # buffer = RingBuffer(window_length, interval, data_window)
         # df = buffer.data_window
         dw = data_window
-        w_atr = 8  # ATR window
-
         hist, atr, inf_grid, sup_grid, close_ema, atr_grid = compute_indicators(
             dw, w1=12, w2=26, w3=9, w_atr=w_atr, step=0.15
         )
@@ -229,31 +207,19 @@ def generate_market_signals(symbols, interval, fromdate):
     return signals, df
 
 
-# %%
 def screen():
     all_stats = client.futures_ticker()
     perps = process_all_stats(all_stats)
-    filtered_perps = filter_perps(perps)
+    filtered_perps = filter_perps(perps, minhigh, maxlow)
     filtered_perps = pd.concat(filtered_perps, axis=0)
     signals, rows = generate_market_signals(filtered_perps, interval, fromdate)
     return signals, rows
 
 
 # %%
-# signals
-
+signals, rows = screen()
 # %%
-# rows
-
-# %%
-
-# %%
-
-# signals, rows = screen()
-# %%
-
-# %%
-
+signals
 
 # # %%
 # import plotly.graph_objects as go
