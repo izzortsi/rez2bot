@@ -15,7 +15,7 @@ api_key = os.environ.get("API_KEY")
 api_secret = os.environ.get("API_SECRET")
 client = Client(api_key, api_secret)
 
-interval = Client.KLINE_INTERVAL_15MINUTE
+intervals = [Client.KLINE_INTERVAL_15MINUTE, Client.KLINE_INTERVAL_4HOUR]
 fromdate = "28 Dec, 2021"
 window_length = 52
 price_position_range = [0.3, 0.7]
@@ -168,61 +168,69 @@ def filter_perps(perps, price_position_range=[0.3, 0.7]):
     return screened_symbols
 
 
-def generate_market_signals(symbols, interval, fromdate):
+def generate_market_signals(symbols, intervals, fromdate):
     # usdt_pairs = [f"{symbol}T" for symbol in symbols.pair]
     signals = {}
     # df = pd.DataFrame.from_dict({})
-    df = []
+    df = {tf: [] for tf in intervals}
     data = {}
     # for symbol in symbols.symbol:
     for index, row in symbols.iterrows():
         symbol = row.symbol
+        signals[symbol] = {}
+        windows = {}
         # print(symbol)
         # print(type(symbol))
-        klines = client.futures_historical_klines(symbol, interval, fromdate)
-        klines = process_futures_klines(klines)
-        # print(f"len klines: {len(klines)}")
-        data_window = klines.tail(window_length)
-        # data_window.index = range(window_length)
-        # print(f"len dw: {len(data_window)}")
-        data_window.index = range(len(data_window))
-        # data_window
-
-        # buffer = RingBuffer(window_length, interval, data_window)
-        # df = buffer.data_window
-        dw = data_window
-        w_atr = 5
-        hist, atr, inf_grid, sup_grid, close_ema, atr_grid = compute_indicators(
-            dw, w1=12, w2=26, w3=9, w_atr=w_atr, step=0.12
-        )
-        signal = generate_signal(dw, hist, inf_grid, sup_grid)
-
-        data[symbol] = {
-            "signals": signal,
-            "klines": klines,
-            "data_window": data_window,
-            "hist": hist,
-            "atr": atr,
-            "inf_grid": inf_grid,
-            "sup_grid": sup_grid,
-            "close_ema": close_ema,
-            "atr_grid": atr_grid,
+        kl_dict = {
+            tf: process_futures_klines(
+                client.futures_historical_klines(symbol, tf, fromdate)
+            )
+            for tf in intervals
         }
 
-        if signal != 0:
-            signals[symbol] = signal
-            df.append(
-                row.filter(
-                    items=[
-                        "symbol",
-                        "priceChangePercent",
-                        "lastPrice",
-                        "weightedAvgPrice",
-                        "pricePosition",
-                    ]
-                )
+        # kl_dict = process_futures_klines(klines)
+
+        for tf in intervals:
+            data_window = kl_dict[tf].tail(window_length)
+            data_window.index = range(len(data_window))
+            windows[tf] = data_window
+
+            dw = data_window
+            w_atr = 5
+
+            hist, atr, inf_grid, sup_grid, close_ema, atr_grid = compute_indicators(
+                dw, w1=12, w2=26, w3=9, w_atr=w_atr, step=0.12
             )
-            print(symbol, ": ", signal)
+
+            signal = generate_signal(dw, hist, inf_grid, sup_grid)
+
+            if signal != 0:
+                signals[symbol][tf] = signal
+
+                df[tf].append(
+                    row.filter(
+                        items=[
+                            "symbol",
+                            "priceChangePercent",
+                            "lastPrice",
+                            "weightedAvgPrice",
+                            "pricePosition",
+                        ]
+                    )
+                )
+                data[symbol] = {
+                    tf: {
+                        "signals": signals,
+                        "klines": klines,
+                        "data_window": windows,
+                        "hist": hist,
+                        "atr": atr,
+                        "inf_grid": inf_grid,
+                        "sup_grid": sup_grid,
+                        "close_ema": close_ema,
+                        "atr_grid": atr_grid,
+                    },
+                }
         # signals[symbol] = [signal, df]
     return signals, df, data
 
@@ -232,7 +240,7 @@ def screen():
     perps = process_all_stats(all_stats)
     filtered_perps = filter_perps(perps, price_position_range=price_position_range)
     filtered_perps = pd.concat(filtered_perps, axis=0)
-    signals, rows, data = generate_market_signals(filtered_perps, interval, fromdate)
+    signals, rows, data = generate_market_signals(filtered_perps, intervals, fromdate)
     return signals, rows, data
 
 
