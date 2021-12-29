@@ -15,7 +15,7 @@ api_key = os.environ.get("API_KEY")
 api_secret = os.environ.get("API_SECRET")
 client = Client(api_key, api_secret)
 
-interval = Client.KLINE_INTERVAL_1MINUTE
+interval = Client.KLINE_INTERVAL_5MINUTE
 fromdate = "28 Dec, 2021"
 window_length = 52
 
@@ -107,7 +107,7 @@ def compute_indicators(klines, w1=12, w2=26, w3=9, w_atr=5, step=0.4):
 
     atr = ta.atr(klines["high"], klines["low"], klines["close"], length=w_atr)
 
-    sup_grid_coefs = np.array([0.618, 1.0, 1.364, 1.618, 2.0, 2.364, 2.618])
+    sup_grid_coefs = np.array([0.7, 1.0, 1.364, 1.618, 2.0, 2.364, 2.618])
     # sup_grid_coefs = np.array([1.0, 1.364, 1.618, 2.0, 2.364, 2.618])
     # sup_grid_coefs = np.array([1.364, 1.618, 2.0, 2.364, 2.618])
     inf_grid_coefs = -1.0*sup_grid_coefs
@@ -154,7 +154,7 @@ def filter_perps(perps):
             ) / (float(row.highPrice.iloc[-1]) - float(row.lowPrice.iloc[-1]))
             # print(price_position)
             row["pricePosition"] = price_position
-            if (price_position <= 0.35 or price_position >= 0.65):# and float(row.priceChangePercent.iloc[-1]) >= -2.0:
+            if (price_position <= 0.2 or price_position >= 0.8):# and float(row.priceChangePercent.iloc[-1]) >= -2.0:
             # if float(row.priceChangePercent.iloc[-1]) >= -1:
                 # print(price_position)
                 screened_symbols.append(row)
@@ -185,7 +185,7 @@ def generate_market_signals(symbols, interval, fromdate):
         dw = data_window
         w_atr=5
         hist, atr, inf_grid, sup_grid, close_ema, atr_grid = compute_indicators(
-            dw, w1=12, w2=26, w3=9, w_atr=w_atr, step=0.15
+            dw, w1=12, w2=26, w3=9, w_atr=w_atr, step=0.12
         )
         signal = generate_signal(dw, hist, inf_grid, sup_grid)
 
@@ -223,17 +223,15 @@ def generate_market_signals(symbols, interval, fromdate):
 def screen():
     all_stats = client.futures_ticker()
     perps = process_all_stats(all_stats)
-    filtered_perps = filter_perps(perps, minhigh, maxlow)
+    filtered_perps = filter_perps(perps)
     filtered_perps = pd.concat(filtered_perps, axis=0)
     signals, rows, data = generate_market_signals(filtered_perps, interval, fromdate)
     return signals, rows, data
 
 # %%
-# signals
-signals, rows, data = screen()
 
+signals, rows, data = screen()
 sdf =pd.concat(rows, axis=1).transpose()
-# %%
 print(sdf)
 
 # %%
