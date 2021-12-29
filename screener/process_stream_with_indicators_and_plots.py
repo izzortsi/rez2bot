@@ -168,7 +168,7 @@ def handle_socket_message(msg):
 twm.start_kline_futures_socket(callback = handle_socket_message, symbol=symbol, interval=interval)
 buffer.data_window
 # %%
-import plotly.graph_objects as go
+
 
 import pandas as pd
 from datetime import datetime
@@ -206,7 +206,7 @@ hist, atr, atr_grid, close_ema = compute_indicators(df, w1=12, w2=26, w3=9, w_at
 
 
 # %%
-
+import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 
@@ -335,11 +335,3 @@ fig.show()
 # fig.show()
 
 
-
-# %%
-
-#%%
-
-#%%
-
-#%%

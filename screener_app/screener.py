@@ -165,6 +165,7 @@ def generate_market_signals(symbols, interval, fromdate):
     signals = {}
     # df = pd.DataFrame.from_dict({})
     df = []
+    data = {}
     # for symbol in symbols.symbol:
     for index, row in symbols.iterrows():
         symbol = row.symbol
@@ -178,14 +179,29 @@ def generate_market_signals(symbols, interval, fromdate):
         # print(f"len dw: {len(data_window)}")
         data_window.index = range(len(data_window))
 # data_window
-
+        
         # buffer = RingBuffer(window_length, interval, data_window)
         # df = buffer.data_window
         dw = data_window
+        w_atr=5
         hist, atr, inf_grid, sup_grid, close_ema, atr_grid = compute_indicators(
             dw, w1=12, w2=26, w3=9, w_atr=w_atr, step=0.15
         )
         signal = generate_signal(dw, hist, inf_grid, sup_grid)
+
+        data[symbol] = {
+                    "signals": signal,
+                    "klines": klines, 
+                    "data_window": data_window,
+                    "hist": hist,
+                    "atr": atr,
+                    "inf_grid": inf_grid,
+                    "sup_grid": sup_grid,
+                    "close_ema": close_ema,
+                    "atr_grid": atr_grid,
+                        }
+
+
         if signal != 0:
             signals[symbol] = signal
             df.append(
@@ -201,7 +217,7 @@ def generate_market_signals(symbols, interval, fromdate):
             )
             print(symbol, ": ", signal)
         # signals[symbol] = [signal, df]
-    return signals, df
+    return signals, df, data
 
 
 def screen():
@@ -209,21 +225,13 @@ def screen():
     perps = process_all_stats(all_stats)
     filtered_perps = filter_perps(perps, minhigh, maxlow)
     filtered_perps = pd.concat(filtered_perps, axis=0)
-    signals, rows = generate_market_signals(filtered_perps, interval, fromdate)
-    return signals, rows
+    signals, rows, data = generate_market_signals(filtered_perps, interval, fromdate)
+    return signals, rows, data
 
 # %%
 # signals
-signals, rows = screen()
-# %%
-signals
-rows
+signals, rows, data = screen()
 
-
-# %%
-signals
-
-# %%
 sdf =pd.concat(rows, axis=1).transpose()
 # %%
 print(sdf)
