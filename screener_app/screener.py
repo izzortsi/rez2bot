@@ -340,7 +340,7 @@ def plot_symboL_atr_grid(symbol, data):
         data[symbol]["hist"],
     )
     fig.show()
-    return fig
+    # return fig
 # %%
 
 # xmr_fig = plot_single_atr_grid(
