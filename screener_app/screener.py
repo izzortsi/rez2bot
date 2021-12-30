@@ -15,8 +15,8 @@ api_key = os.environ.get("API_KEY")
 api_secret = os.environ.get("API_SECRET")
 client = Client(api_key, api_secret)
 
-interval = Client.KLINE_INTERVAL_1HOUR
-fromdate = "25 Dec, 2021"
+interval = Client.KLINE_INTERVAL_15MINUTE
+fromdate = "22 Dec, 2021"
 window_length = 52
 price_position_range = [0.15, 0.85]
 
@@ -341,6 +341,17 @@ def plot_symboL_atr_grid(symbol, data):
     )
     fig.show()
     # return fig
+# %%
+# c1, c2 = screened_pairs
+
+
+# %%
+for pair in screened_pairs:
+    plot_symboL_atr_grid(pair, data)
+
+
+# %%
+
 # %%
 
 # xmr_fig = plot_single_atr_grid(
