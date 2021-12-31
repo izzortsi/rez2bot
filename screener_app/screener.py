@@ -191,7 +191,7 @@ def generate_market_signals(symbols, interval, fromdate):
         # buffer = RingBuffer(window_length, interval, data_window)
         # df = buffer.data_window
         dw = data_window
-        w_atr = 5
+        w_atr = 8
         hist, atr, inf_grid, sup_grid, close_ema, atr_grid = compute_indicators(
             dw, w1=12, w2=26, w3=9, w_atr=w_atr, step=0.12
         )
@@ -239,21 +239,17 @@ def screen():
 # %%
 
 signals, rows, data = screen()
+
+# %%
+
 sdf = pd.concat(rows, axis=1).transpose()
 print(sdf)
 
-# %%
 
 # %%
 
-
-# # %%
 # import plotly.graph_objects as go
 # from plotly.subplots import make_subplots
-
-# #%%
-
-# # %%
 
 # fig = make_subplots(rows=3, cols=4,
 #         specs=[[{'rowspan': 2, 'colspan': 3}, None, None, {'rowspan': 2}],
