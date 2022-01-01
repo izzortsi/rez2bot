@@ -1,25 +1,41 @@
 # %%
+
 from binance import Client, ThreadedWebsocketManager
 from binance.enums import *
 from threading import Thread
 from datetime import datetime
 import numpy as np
-import pandas as pd
 import pandas_ta as ta
 import time
 import os
 import pandas as pd
+import argparse
 
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-tf", "--timeframe", type=str, default="15m")
+parser.add_argument("-fd", "--fromdate", type=str, default="20 Dec, 2021")
+parser.add_argument("-ppl", "--price_posision_low", type=float, default=0.10)
+parser.add_argument("-pph", "--price_position_high", type=float, default=0.90)
+parser.add_argument("-wl", "--window_length", type=int, default=52)
+parser.add_argument("-wa", "--atr_window_length", type=int, default=5)
+args = parser.parse_args()
 
 api_key = os.environ.get("API_KEY")
 api_secret = os.environ.get("API_SECRET")
 client = Client(api_key, api_secret)
 
-interval = Client.KLINE_INTERVAL_1HOUR
-fromdate = "25 Dec, 2021"
-window_length = 52
-price_position_range = [0.15, 0.85]
+#interval = Client.KLINE_INTERVAL_1HOUR
+#fromdate = "25 Dec, 2021"
+#window_length = 52
+#price_position_range = [0.15, 0.85]
 
+interval = args.timeframe
+fromdate = args.fromdate
+window_length = args.window_length
+ppl, pph = args.price_posision_low, args.price_position_high
+price_position_range = [ppl, pph]
+w_atr = args.atr_window_length
 
 def to_datetime_tz(arg, timedelta=-pd.Timedelta("03:00:00"), unit="ms", **kwargs):
     """
@@ -90,11 +106,6 @@ class RingBuffer:
         #         self.data_window = self.data_window.append(
         #             row, ignore_index=True
         #                 )
-
-
-import pandas as pd
-from datetime import datetime
-
 
 def compute_indicators(klines, w1=12, w2=26, w3=9, w_atr=5, step=0.4):
     # compute macd
@@ -191,7 +202,7 @@ def generate_market_signals(symbols, interval, fromdate):
         # buffer = RingBuffer(window_length, interval, data_window)
         # df = buffer.data_window
         dw = data_window
-        w_atr = 8
+        #w_atr = 5
         hist, atr, inf_grid, sup_grid, close_ema, atr_grid = compute_indicators(
             dw, w1=12, w2=26, w3=9, w_atr=w_atr, step=0.12
         )
@@ -235,20 +246,6 @@ def screen():
     signals, rows, data = generate_market_signals(filtered_perps, interval, fromdate)
     return signals, rows, data
 
-
-# %%
-
-signals, rows, data = screen()
-
-# %%
-
-sdf = pd.concat(rows, axis=1).transpose()
-# print(sdf)
-print(signals)
-
-
-
-
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -262,7 +259,8 @@ def plot_single_atr_grid(df, atr, atr_grid, close_ema, hist):
         [{'colspan': 3}, None, None, {}]],
         vertical_spacing=0.075,
         horizontal_spacing=0.08,
-        shared_xaxes=True)
+        shared_xaxes=True,
+        )
     # fig = make_subplots(rows=2, cols=1, shared_xaxes=True)
 
     # %%
@@ -323,16 +321,15 @@ def plot_single_atr_grid(df, atr, atr_grid, close_ema, hist):
 
     fig.add_trace(kl_go, row=1, col=1)
     fig.update(layout_xaxis_rangeslider_visible=False)
+    #fig.update_layout(title_text="___USDT@15m")
+    fig.update()
 
     fig.add_trace(ema_go, row=1, col=1)
     fig.add_trace(hist_go, row=3, col=1)
-
+    
     plot_atr_grid(atr_grid, fig)
 
     return fig
-# data
-# %%
-screened_pairs = list(sdf.symbol)
 
 def plot_symboL_atr_grid(symbol, data):
     fig = plot_single_atr_grid(
@@ -342,155 +339,10 @@ def plot_symboL_atr_grid(symbol, data):
         data[symbol]["close_ema"], 
         data[symbol]["hist"],
     )
+    fig.update_layout(title_text=f"{symbol}@{interval}")
     fig.show()
     # return fig
-# %%
 
-# xmr_fig = plot_single_atr_grid(
-#     data["XMRUSDT"]["data_window"], 
-#     data["XMRUSDT"]["atr"], 
-#     data["XMRUSDT"]["atr_grid"], 
-#     data["XMRUSDT"]["close_ema"], 
-#     data["XMRUSDT"]["hist"]
-#     )
-
-# %%
-# xmr_fig
-# %%
-
-<<<<<<< HEAD
-=======
-# xmr_fig.show()
-# %%
-
-# # %%
->>>>>>> 9091e33993731d5785a5c89fe348fca6cc39383d
-# import plotly.graph_objects as go
-# from plotly.subplots import make_subplots
-
-# fig = make_subplots(rows=3, cols=4,
-#         specs=[[{'rowspan': 2, 'colspan': 3}, None, None, {'rowspan': 2}],
-#         [None, None, None, None],
-#         [{'colspan': 3}, None, None, {}]],
-#         vertical_spacing=0.075,
-#         horizontal_spacing=0.08,
-#         shared_xaxes=True)
-# #%%
-# def plot_all(fig, df, hist, atr, atr_grid, close_ema):
-
-#     # fig = make_subplots(rows=2, cols=1, shared_xaxes=True)
-
-#     # %%
-
-#     kl_go = go.Candlestick(x=df['init_ts'],
-#                     open=df['open'],
-#                     high=df['high'],
-#                     low=df['low'],
-#                     close=df['close'])
-
-
-#     atr_go = go.Scatter(x=df.init_ts, y=atr,
-#                                 mode="lines",
-#                                 line=go.scatter.Line(color="gray"),
-#                                 showlegend=False)
-
-
-#     ema_go = go.Scatter(x=df.init_ts, y=close_ema,
-#                                 mode="lines",
-#                                 # line=go.scatter.Line(color="blue"),
-#                                 showlegend=True,
-#                                 line=dict(color='royalblue', width=3),
-#                                 opacity=0.75,
-#                                 )
-
-
-#     def hist_colors(hist):
-#         diffs = hist.diff()
-#         colors = diffs.apply(lambda x: "green" if x > 0 else "red")
-#         return colors
-
-
-#     _hist_colors = hist_colors(hist)
-
-
-#     hist_go = go.Scatter(x=df.init_ts, y=hist,
-#                                 mode="lines+markers",
-#                                 # line=go.scatter.Line(color="blue"),
-#                                 showlegend=False,
-#                                 line=dict(color="black", width=3),
-#                                 opacity=1,
-#                                 marker=dict(color=_hist_colors, size=6),
-#                                 )
-
-
-#     # %%
-
-#     def plot_atr_grid(atr_grid, fig):
-#         for atr_band in atr_grid:
-#             atr_go = go.Scatter(x=df.init_ts, y=atr_band,
-#                                 mode="lines",
-#                                 # line=go.scatter.Line(color="teal"),
-#                                 showlegend=False,
-#                                 line=dict(color='teal', width=0.4),
-#                                 opacity=.8,
-#                                 hoverinfo='skip')
-#             fig.add_trace(atr_go, row=1, col=1)
-
-
-#     fig.add_trace(kl_go, row=1, col=1)
-#     fig.update(layout_xaxis_rangeslider_visible=False)
-
-#     fig.add_trace(ema_go, row=1, col=1)
-#     fig.add_trace(hist_go, row=3, col=1)
-
-#     plot_atr_grid(atr_grid, fig)
-
-#     fig.update_layout(
-#         autosize=True,
-#         width=1000,
-#         height=600,
-#         margin=dict(
-#             l=10,
-#             r=10,
-#             b=10,
-#             t=10,
-#             pad=1
-#         ),
-#         paper_bgcolor="LightSteelBlue",
-#     )
-
-#     # %%
-
-
-#     # fig.update_layout({'plot_bgcolor': "#21201f", 'paper_bgcolor': "#21201f", 'legend_orientation': "h"},
-#     #                   legend=dict(y=1, x=0),
-#     #                   font=dict(color='#dedddc'), dragmode='pan', hovermode='x',
-#     #                   margin=dict(b=20, t=0, l=0, r=40),
-#     #                   )
-#     fig.update_layout({'paper_bgcolor': "#21201f", 'legend_orientation': "h"},
-#                     legend=dict(y=1, x=0),
-#                     font=dict(color='#dedddc'), dragmode='pan',
-#                     margin=dict(b=20, t=0, l=0, r=40),
-#                     )
-#     # fig.update_xaxes(spikecolor="grey",spikethickness=1)
-#     fig.update_xaxes(showgrid=True, zeroline=False, rangeslider_visible=False, showticklabels=False,
-#                     showspikes=True, spikemode='across', spikesnap='cursor', showline=False,
-#                     spikecolor="grey",spikethickness=1, spikedash='solid')
-#     fig.update_yaxes(showspikes=True, spikedash='solid',spikemode='across',
-#                     spikecolor="grey",spikesnap="cursor",spikethickness=1)
-#     # fig.update_layout(spikedistance=1000,hoverdistance=1000)
-#     fig.update_layout(hovermode="x unified")
-
-
-#     fig.update_traces(xaxis='x')
-#     return fig
-
-
-# # %%
-
-# fig = plot_all(fig, df, hist, atr, atr_grid, close_ema)
-# #%%
-# fig.show()
-# #%%
-
-#%%
+signals, rows, data = screen()
+sdf = pd.concat(rows, axis=1).transpose()
+screened_pairs = list(sdf.symbol)
