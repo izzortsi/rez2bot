@@ -343,11 +343,6 @@ def plot_symboL_atr_grid(symbol, data):
     fig.show()
     # return fig
 
-def plot_all_screened(screened_pairs, data):
-    for pair in screened_pairs:
-        plot_symboL_atr_grid(pair, data)
-
 signals, rows, data = screen()
 sdf = pd.concat(rows, axis=1).transpose()
 screened_pairs = list(sdf.symbol)
-
