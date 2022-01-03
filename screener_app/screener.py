@@ -350,4 +350,3 @@ def plot_all_screened(screened_pairs, data):
 signals, rows, data = screen()
 sdf = pd.concat(rows, axis=1).transpose()
 screened_pairs = list(sdf.symbol)
-
