@@ -368,6 +368,9 @@ def send_grid_orders(client, symbol, data, qty, protect=False):
                 priceProtect=protect,
                 workingType="CONTRACT_PRICE",
             )
+    except Exception as e:
+        print(e)            
+
     if signal == 1:
         print(f"{symbol} {signal}")
         try:

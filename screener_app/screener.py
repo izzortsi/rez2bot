@@ -14,9 +14,9 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-tf", "--timeframe", type=str, default="15m")
-parser.add_argument("-fd", "--fromdate", type=str, default="20 Dec, 2021")
-parser.add_argument("-ppl", "--price_posision_low", type=float, default=0.10)
-parser.add_argument("-pph", "--price_position_high", type=float, default=0.90)
+parser.add_argument("-fd", "--fromdate", type=str, default="1 day ago")
+parser.add_argument("-ppl", "--price_posision_low", type=float, default=0.4)
+parser.add_argument("-pph", "--price_position_high", type=float, default=0.6)
 parser.add_argument("-wl", "--window_length", type=int, default=52)
 parser.add_argument("-wa", "--atr_window_length", type=int, default=5)
 args = parser.parse_args()
@@ -118,10 +118,12 @@ def compute_indicators(klines, w1=12, w2=26, w3=9, w_atr=5, step=0.4):
     # compute atr bands
 
     atr = ta.atr(klines["high"], klines["low"], klines["close"], length=w_atr)
-
-    sup_grid_coefs = np.array([0.7, 1.0, 1.364, 1.618, 2.0, 2.364, 2.618])
+    # sup_grid_coefs = np.array([0.618, 1.0, 1.618, 2.0, 2.618])
+    # sup_grid_coefs = np.array([0.618, 0.708, 0.764, 0.854, 1.0, 1.236, 1.326, 1.382, 1.472, 1.618, 2.0, 2.326, 2.472, 2.618])
     # sup_grid_coefs = np.array([1.0, 1.364, 1.618, 2.0, 2.364, 2.618])
     # sup_grid_coefs = np.array([1.364, 1.618, 2.0, 2.364, 2.618])
+    # sup_grid_coefs = np.array([1.0, 1.618, 2.0, 2.618])
+    sup_grid_coefs = np.array([1, 1.618, 2.0, 2.618])
     inf_grid_coefs = -1.0 * sup_grid_coefs
 
     close_ema = klines["close"].ewm(span=w_atr, min_periods=w_atr).mean()
@@ -349,4 +351,6 @@ def plot_all_screened(screened_pairs, data):
 
 signals, rows, data = screen()
 sdf = pd.concat(rows, axis=1).transpose()
-screened_pairs = list(sdf.symbol)
+spairs = list(sdf.symbol)
+
+#%%
