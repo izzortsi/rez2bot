@@ -346,3 +346,41 @@ def plot_symboL_atr_grid(symbol, data):
 signals, rows, data = screen()
 sdf = pd.concat(rows, axis=1).transpose()
 screened_pairs = list(sdf.symbol)
+
+##orders
+
+def send_grid_orders(client, symbol, data, qty, protect=False):
+    signal = data[symbol]["signals"]
+    if signal == -1:
+        side = "SELL"
+        counterside = "BUY"
+    elif signal == 1:
+        side = "BUY"
+        counterside = "SELL"
+
+    
+    try:
+        new_position = client.futures_create_order(
+            symbol=symbol,
+            side=side,
+            type="MARKET",
+                quantity=qty,
+                priceProtect=protect,
+                workingType="CONTRACT_PRICE",
+            )
+    if signal == 1:
+        print(f"{symbol} {signal}")
+        try:
+            client.futures_order(
+                symbol=symbol,
+                side=signal,
+                type="limit",
+                quantity=1,
+                price=data[symbol]["close_ema"][-1],
+                timeInForce="GTC",
+            )
+        except Exception as e:
+            print(e)
+
+
+   

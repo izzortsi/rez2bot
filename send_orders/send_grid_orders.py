@@ -131,17 +131,3 @@ class OrderHandler(Thread):
             if self.closing_order["status"] == "FILLED":
                 self.exit_price = float(self.closing_order["avgPrice"])
                 self.exit_time = to_datetime_tz(self.closing_order["updateTime"], unit="ms")
-
-!!
-
-!!
-
-!!
-
-!!
-
-!!
-
-!!
-
-!!
