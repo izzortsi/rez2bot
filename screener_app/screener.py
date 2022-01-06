@@ -15,8 +15,8 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("-tf", "--timeframe", type=str, default="15m")
 parser.add_argument("-fd", "--fromdate", type=str, default="1 day ago")
-parser.add_argument("-ppl", "--price_posision_low", type=float, default=0.4)
-parser.add_argument("-pph", "--price_position_high", type=float, default=0.6)
+parser.add_argument("-ppl", "--price_posision_low", type=float, default=0.5)
+parser.add_argument("-pph", "--price_position_high", type=float, default=0.5)
 parser.add_argument("-wl", "--window_length", type=int, default=52)
 parser.add_argument("-wa", "--atr_window_length", type=int, default=5)
 args = parser.parse_args()
@@ -123,7 +123,8 @@ def compute_indicators(klines, w1=12, w2=26, w3=9, w_atr=5, step=0.4):
     # sup_grid_coefs = np.array([1.0, 1.364, 1.618, 2.0, 2.364, 2.618])
     # sup_grid_coefs = np.array([1.364, 1.618, 2.0, 2.364, 2.618])
     # sup_grid_coefs = np.array([1.0, 1.618, 2.0, 2.618])
-    sup_grid_coefs = np.array([1, 1.618, 2.0, 2.618])
+    # sup_grid_coefs = np.array([0.854, 1, 1.618, 2.0, 2.618])
+    sup_grid_coefs = np.array([1.364, 1.618, 2.0, 2.618])
     inf_grid_coefs = -1.0 * sup_grid_coefs
 
     close_ema = klines["close"].ewm(span=w_atr, min_periods=w_atr).mean()
@@ -168,6 +169,7 @@ def filter_perps(perps, price_position_range=[0.3, 0.7]):
             price_position = (
                 float(row.lastPrice.iloc[-1]) - float(row.lowPrice.iloc[-1])
             ) / (float(row.highPrice.iloc[-1]) - float(row.lowPrice.iloc[-1]))
+            print(price_position)
             # print(price_position)
             row["pricePosition"] = price_position
             if (
