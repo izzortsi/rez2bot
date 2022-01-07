@@ -1,21 +1,13 @@
 # %%
 
-from binance.client import Client
-
-
-# %%
-
+from binance.futures import Futures as Client
 from binance.enums import *
-from threading import Thread
-from datetime import datetime
 import numpy as np
 import pandas_ta as ta
 import time
 import os
 import pandas as pd
 import argparse
-
-# %%
 
 
 parser = argparse.ArgumentParser()
@@ -37,7 +29,7 @@ args = parser.parse_args()
 
 api_key = os.environ.get("API_KEY")
 api_secret = os.environ.get("API_SECRET")
-client = Client(api_key, api_secret)
+client = Client()
 
 #interval = Client.KLINE_INTERVAL_1HOUR
 #fromdate = "25 Dec, 2021"
@@ -71,12 +63,15 @@ def to_datetime_tz(arg, timedelta=-pd.Timedelta("03:00:00"), unit="ms", **kwargs
 def process_futures_klines(klines):
     # klines = msg["k"]
     klines = pd.DataFrame.from_records(klines, coerce_float=True)
+    # print(klines)
     klines = klines.loc[:, [0, 6, 1, 2, 3, 4, 5]]
     klines.columns = ["init_ts", "end_ts", "open", "high", "low", "close", "volume"]
+    # print(klines)
     # df = pd.DataFrame(klines, columns=["timestamp", "open", "close", "high", "low", "transactionVol","transactionAmt"])
     klines["init_ts"] = klines["init_ts"].apply(to_datetime_tz)
     klines["end_ts"] = klines["end_ts"].apply(to_datetime_tz)
     klines.update(klines.iloc[:, 2:].astype(float))
+    # print(klines)
     return klines
 
 
@@ -201,7 +196,7 @@ def filter_perps(perps, price_position_range=[0.3, 0.7]):
     return screened_symbols
 
 
-def generate_market_signals(symbols, coefs, interval, fromdate, limit=100):
+def generate_market_signals(symbols, coefs, interval, window_length=52):
     # usdt_pairs = [f"{symbol}T" for symbol in symbols.pair]
     signals = {}
     # df = pd.DataFrame.from_dict({})
@@ -210,12 +205,18 @@ def generate_market_signals(symbols, coefs, interval, fromdate, limit=100):
     # for symbol in symbols.symbol:
     for index, row in symbols.iterrows():
         symbol = row.symbol
-        # print(symbol)
+        print(symbol)
         # print(type(symbol))
-        klines = client.futures_klines(symbol=symbol, interval=interval, limit=limit)
+        klines = client.klines(symbol, interval, limit=99)
+        # print(klines)
         klines = process_futures_klines(klines)
+        print(klines)
+        klines.index =  range(len(klines))
         # print(f"len klines: {len(klines)}")
+        print(1)
+        print(type(klines.tail(10)))
         data_window = klines.tail(window_length)
+        print(1)
         # data_window.index = range(window_length)
         # print(f"len dw: {len(data_window)}")
         data_window.index = range(len(data_window))
@@ -229,12 +230,10 @@ def generate_market_signals(symbols, coefs, interval, fromdate, limit=100):
             dw, coefs, w1=12, w2=26, w3=9, w_atr=w_atr, step=0.12
         )
         signal, bands = generate_signal(dw, coefs, hist, inf_grid, sup_grid)
-        intensity = sum(bands)/sum(coefs)
-        
         print(symbol, signal, bands)
         data[symbol] = {
             "signals": bands,
-            "intensity": intensity,
+            "intensity": sum(bands)/sum(coefs),
             "klines": klines,
             "data_window": data_window,
             "hist": hist,
@@ -258,12 +257,13 @@ def generate_market_signals(symbols, coefs, interval, fromdate, limit=100):
                     ]
                 )
             )
-            print(symbol, ": ", signal, intensity, bands)
+            print(symbol, ": ", signal)
         # signals[symbol] = [signal, df]
     return signals, df, data
 
 def prescreen():
-    all_stats = client.futures_ticker()
+    # client.ticker_24hr_price_change()
+    all_stats = client.ticker_24hr_price_change()
     perps = process_all_stats(all_stats)
     filtered_perps = filter_perps(perps, price_position_range=price_position_range)
     filtered_perps = pd.concat(filtered_perps, axis=0)
