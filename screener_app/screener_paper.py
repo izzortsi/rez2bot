@@ -19,8 +19,9 @@ import argparse
 
 
 parser = argparse.ArgumentParser()
+parser.add_argument("-pt", "--paper_trade", type=bool, default=False)
 parser.add_argument("-tf", "--timeframe", type=str, default="15m")
-parser.add_argument("-fd", "--fromdate", type=str, default="1 day ago")
+parser.add_argument("-fd", "--fromdate", type=str, default="12 hour ago")
 parser.add_argument("-ppl", "--price_posision_low", type=float, default=0.5)
 parser.add_argument("-pph", "--price_position_high", type=float, default=0.5)
 # parser.add_argument("-gs", "--grid_shape", nargs="+", default=[, "b"])
@@ -28,10 +29,9 @@ parser.add_argument("-pph", "--price_position_high", type=float, default=0.5)
 #                         help="my help message", type=float,
 #                         default=None)
 parser.add_argument("-wl", "--window_length", type=int, default=52)
-parser.add_argument("-wa", "--atr_window_length", type=int, default=5)
-parser.add_argument("-e", nargs=7, metavar=('b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6'),
-                        help="my help message", type=float,
-                        default=(0.854, 1.0, 1.364, 1.618, 1.854, 2.0, 2.364))
+parser.add_argument("-wa", "--atr_window_length", type=int, default=8)
+parser.add_argument("-e", nargs="+", help="my help message", type=float,
+                        default=(1.364, 1.618, 1.854, 2.0, 2.364))
 
 args = parser.parse_args()
 
@@ -50,6 +50,7 @@ window_length = args.window_length
 ppl, pph = args.price_posision_low, args.price_position_high
 price_position_range = [ppl, pph]
 w_atr = args.atr_window_length
+pt = args.paper_trade
 coefs = np.array(args.e)
 
 def to_datetime_tz(arg, timedelta=-pd.Timedelta("03:00:00"), unit="ms", **kwargs):
@@ -201,12 +202,13 @@ def filter_perps(perps, price_position_range=[0.3, 0.7]):
     return screened_symbols
 
 
-def generate_market_signals(symbols, coefs, interval, fromdate, limit=100):
+def generate_market_signals(symbols, coefs, interval, limit=100, paper=False, positions={}, cpnl={}, update_positions=False):
     # usdt_pairs = [f"{symbol}T" for symbol in symbols.pair]
     signals = {}
     # df = pd.DataFrame.from_dict({})
     df = []
     data = {}
+
     # for symbol in symbols.symbol:
     for index, row in symbols.iterrows():
         symbol = row.symbol
@@ -228,10 +230,14 @@ def generate_market_signals(symbols, coefs, interval, fromdate, limit=100):
         hist, atr, inf_grid, sup_grid, close_ema, atr_grid = compute_indicators(
             dw, coefs, w1=12, w2=26, w3=9, w_atr=w_atr, step=0.12
         )
+
         signal, bands = generate_signal(dw, coefs, hist, inf_grid, sup_grid)
         intensity = sum(bands)/sum(coefs)
         
+
+
         print(symbol, signal, bands)
+
         data[symbol] = {
             "signals": bands,
             "intensity": intensity,
@@ -258,9 +264,40 @@ def generate_market_signals(symbols, coefs, interval, fromdate, limit=100):
                     ]
                 )
             )
+            if paper and update_positions:
+                if signal > 0:
+                    positions[symbol] = [1, sum(np.array(bands) * np.array(inf_grid)[:, -1])/sum(np.array(bands)), 0]
+                    print(positions[symbol])
+                elif signal < 0:
+                    positions[symbol] = [-1, sum(np.array(bands) * np.array(sup_grid)[:, -1])/sum(np.array(bands)), 0]
+                    print(positions[symbol])
+            if paper and not update_positions:
+
+                direction, value, pnl = positions[symbol]
+
+                if direction == 1:
+                    if 100*(df[-1].lastPrice - value)/value >= 0.32: #TP/Leverage
+                        positions[symbol] = [0, 0, 100*(df[-1].lastPrice - value)/value - 0.08] #close the position, update final pnl
+                        cpnl[symbol] += positions[symbol][-1]
+                        update_positions = True
+                    else:
+                        positions[symbol][-1] = 100*(df[-1].lastPrice - value)/value - 0.08 #update pnl
+
+                elif direction == -1:
+                    if -100*(value - df[-1].lastPrice)/value  >= 0.32:
+                        positions[symbol] = [0, 0, -100*(value - df[-1].lastPrice)/value - 0.08]
+                        cpnl[symbol] += positions[symbol][-1]
+                        update_positions = True
+                    else:
+                        positions[symbol][1] = -100*(value - df[-1].lastPrice)/value - 0.08 #update pnl
+                    
+                    
             print(symbol, ": ", signal, intensity, bands)
+            print(positions[symbol])
+
+
         # signals[symbol] = [signal, df]
-    return signals, df, data
+    return signals, df, data, positions, cpnl
 
 def prescreen():
     all_stats = client.futures_ticker()
@@ -269,17 +306,21 @@ def prescreen():
     filtered_perps = pd.concat(filtered_perps, axis=0)
     return filtered_perps
 
-def postscreen(filtered_perps):
-    signals, rows, data = generate_market_signals(filtered_perps, coefs, interval, fromdate)    
-    return signals, rows, data
+def postscreen(filtered_perps, paper=False, positions={}, cpnl={}, update_positions=True):
+    signals, rows, data, positions, cpnl = generate_market_signals(filtered_perps, coefs, interval, limit=100, paper=paper, positions = positions, cpnl=cpnl, update_positions=update_positions)    
+    return signals, rows, data, positions, cpnl
+
+def updatescreen(positions, cpnl):
+    signals, rows, data, positions, cpnl = generate_market_signals(filtered_perps, coefs, interval, limit=100, paper=True, positions = positions, cpnl=cpnl, update_positions=False)    
+    return signals, rows, data, positions, cpnl
 
 def screen():
     all_stats = client.futures_ticker()
     perps = process_all_stats(all_stats)
     filtered_perps = filter_perps(perps, price_position_range=price_position_range)
     filtered_perps = pd.concat(filtered_perps, axis=0)
-    signals, rows, data = generate_market_signals(filtered_perps, coefs, interval, fromdate)
-    return signals, rows, data
+    signals, rows, data, positions = generate_market_signals(filtered_perps, coefs, interval, update_positions=True)
+    return signals, rows, data, positions
 
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -387,7 +428,7 @@ if __name__ == "__main__":
     filtered_perps = prescreen()
     print(filtered_perps)
     
-    signals, rows, data = postscreen(filtered_perps)
+    signals, rows, data, positions, cpnl = postscreen(filtered_perps, paper=pt, update_positions=True)
     sdf = pd.concat(rows, axis=1).transpose()
     
     spairs = list(sdf.symbol)
