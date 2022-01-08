@@ -30,17 +30,13 @@ client = Client(api_key, api_secret)
 info_data = client.get_exchange_info()
 
 
-# %%
-info_data
-# %%
-
 
 def f_price(price):
     return f"{price:.2f}"
 
 
 # %%
-symbol = "bnbusdt"
+
 
 
 # %%
@@ -64,21 +60,6 @@ def compute_exit(entry_price, target_profit, side, entry_fee=0.04, exit_fee=0.04
             / (1 + exit_fee / 100)
         )
     return exit_price
-
-
-# %%
-ep = 499.86
-sl_p = compute_exit(ep, 0.1, side="SELL")
-# %%
-100 * (sl_p - ep) / ep
-# %%
-
-sl_p
-# %%
-xp = compute_exit(ep, 1, side="BUY")
-# %%
-100 * (xp - ep) / ep
-# %%
 
 class OrderMaker:
     def __init__(self, client):
@@ -193,28 +174,25 @@ class OrderMaker:
 
 
 # %%
-omaker = OrderMaker(client)
-# %%
-omaker.is_positioned = False
-# %%
+om = OrderMaker(client)
 
-handler.summary
+if __name__=="__main__":
+    
 # %%
-omaker.send_order(symbol, 0.1, 0.02, side=B)
+# omaker.send_order(symbol, 0.1, 0.02, side=B)
 
 # %%
-omaker.send_tp_order(symbol, B, 0.04)
+# omaker.send_tp_order(symbol, B, 0.04)
 # %%
-handler.stop()
-ep = omaker.entry_price
-tpp = float(omaker.tp_price)
-100 * (tpp - ep) / ep
+# ep = omaker.entry_price
+# tpp = float(omaker.tp_price)
+# 100 * (tpp - ep) / ep
 
 # %%
-o = omaker.tp_order
+# o = omaker.tp_order
 
 # %%
-o
+
 
 # %%
 

@@ -119,7 +119,7 @@ class RingBuffer:
         #             row, ignore_index=True
         #                 )
 
-def compute_indicators(klines, coefs=np.array([1.0, 1.364, 1.618, 1.854, 2.0, 2.364, 2.618]), w1=12, w2=26, w3=9, w_atr=5, step=0.4):
+def compute_indicators(klines, coefs=np.array([1.0, 1.364, 1.618, 1.854, 2.0, 2.364, 2.618]), w1=12, w2=26, w3=8, w_atr=8, step=0.4):
     # compute macd
     macd = pd.Series(
         klines["close"].ewm(span=w1, min_periods=w1).mean()
@@ -178,14 +178,16 @@ def process_all_stats(all_stats):
 # compute price position and check other stuff
 def filter_perps(perps, price_position_range=[0.3, 0.7]):
     screened_symbols = []
+    price_positions = []
     for row in perps:
         if "USDT" in row.symbol.iloc[-1] and not ("_" in row.symbol.iloc[-1]):
             # screened_symbols.append(row)
             price_position = (
                 float(row.lastPrice.iloc[-1]) - float(row.lowPrice.iloc[-1])
             ) / (float(row.highPrice.iloc[-1]) - float(row.lowPrice.iloc[-1]))
-            print(price_position)
+            
             # print(price_position)
+            price_positions.append(price_position)  
             row["pricePosition"] = price_position
             if (
                 # price_position <= 0.2 or price_position >= 0.8
@@ -195,10 +197,12 @@ def filter_perps(perps, price_position_range=[0.3, 0.7]):
                 # if float(row.priceChangePercent.iloc[-1]) >= -1:
                 # print(price_position)
                 screened_symbols.append(row)
+    print(sum(np.array(price_positions))/len(perps))
+
     return screened_symbols
 
 
-def generate_market_signals(symbols, coefs, interval, limit=100, paper=False, positions={}, cpnl={}, update_positions=False):
+def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, positions={}, cpnl={}, update_positions=False):
     # usdt_pairs = [f"{symbol}T" for symbol in symbols.pair]
     signals = {}
     # df = pd.DataFrame.from_dict({})
@@ -224,15 +228,17 @@ def generate_market_signals(symbols, coefs, interval, limit=100, paper=False, po
         dw = data_window
         #w_atr = 5
         hist, atr, inf_grid, sup_grid, close_ema, atr_grid = compute_indicators(
-            dw, coefs, w1=12, w2=26, w3=9, w_atr=w_atr, step=0.12
+            dw, coefs, w1=12, w2=26, w3=8, w_atr=w_atr, step=0.12
         )
 
         signal, bands = generate_signal(dw, coefs, hist, inf_grid, sup_grid)
         intensity = sum(bands)/sum(coefs)
         
+        
+        # print("positions:", positions[symbol])
 
-
-        print(symbol, signal, bands)
+        
+        print(f"Screening {symbol}...")
 
         data[symbol] = {
             "signals": bands,
@@ -248,6 +254,7 @@ def generate_market_signals(symbols, coefs, interval, limit=100, paper=False, po
         }
 
         if signal != 0:
+            print(symbol, ": ", "signal:", signal, "intensity:", intensity, "bands:", bands)
             signals[symbol] = bands
             df.append(
                 row.filter(
@@ -263,10 +270,10 @@ def generate_market_signals(symbols, coefs, interval, limit=100, paper=False, po
             if paper and update_positions:
                 if signal > 0:
                     positions[symbol] = [1, sum(np.array(bands) * np.array(inf_grid)[:, -1])/sum(np.array(bands)), 0]
-                    print(positions[symbol])
+                    # print(positions[symbol])
                 elif signal < 0:
                     positions[symbol] = [-1, sum(np.array(bands) * np.array(sup_grid)[:, -1])/sum(np.array(bands)), 0]
-                    print(positions[symbol])
+                    # print(positions[symbol])
             if paper and not update_positions:
 
                 direction, value, pnl = positions[symbol]
@@ -288,8 +295,8 @@ def generate_market_signals(symbols, coefs, interval, limit=100, paper=False, po
                         positions[symbol][1] = -100*(value - df[-1].lastPrice)/value - 0.08 #update pnl
                     
                     
-            print(symbol, ": ", signal, intensity, bands)
-            print(positions[symbol])
+                # print(symbol, ": ", "signal:", signal, "intensity:", intensity, "bands:", bands)
+                print("positions:", positions[symbol])
 
 
         # signals[symbol] = [signal, df]
@@ -303,11 +310,11 @@ def prescreen():
     return filtered_perps
 
 def postscreen(filtered_perps, paper=False, positions={}, cpnl={}, update_positions=True):
-    signals, rows, data, positions, cpnl = generate_market_signals(filtered_perps, coefs, interval, limit=100, paper=paper, positions = positions, cpnl=cpnl, update_positions=update_positions)    
+    signals, rows, data, positions, cpnl = generate_market_signals(filtered_perps, coefs, interval, limit=99, paper=paper, positions = positions, cpnl=cpnl, update_positions=update_positions)    
     return signals, rows, data, positions, cpnl
 
 def updatescreen(positions, cpnl):
-    signals, rows, data, positions, cpnl = generate_market_signals(filtered_perps, coefs, interval, limit=100, paper=True, positions = positions, cpnl=cpnl, update_positions=False)    
+    signals, rows, data, positions, cpnl = generate_market_signals(filtered_perps, coefs, interval, limit=99, paper=True, positions = positions, cpnl=cpnl, update_positions=False)    
     return signals, rows, data, positions, cpnl
 
 def screen():
@@ -425,8 +432,13 @@ if __name__ == "__main__":
     print(filtered_perps)
     
     signals, rows, data, positions, cpnl = postscreen(filtered_perps, paper=pt, update_positions=True)
-    sdf = pd.concat(rows, axis=1).transpose()
-    
-    spairs = list(sdf.symbol)
-
+    if len(rows) > 0:
+        sdf = pd.concat(rows, axis=1).transpose()
+        spairs = list(sdf.symbol)
+        # for pair in spairs:
+            # print(pair, ": ", data[pair]["atr_grid"])
+        # print(spairs)
+        print("positions: ", positions)
+    else:
+        print("Nothing found :( ")
 #%%
