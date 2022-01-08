@@ -1,10 +1,6 @@
 # %%
 
 from binance.client import Client
-
-
-# %%
-
 from binance.enums import *
 from threading import Thread
 from datetime import datetime
