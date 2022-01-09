@@ -10,6 +10,7 @@ import time
 import os
 import pandas as pd
 import argparse
+from GridOrderMaker import GridOrderMaker
 
 # %%
 
@@ -435,8 +436,9 @@ if __name__ == "__main__":
     if len(rows) > 0:
         sdf = pd.concat(rows, axis=1).transpose()
         spairs = list(sdf.symbol)
+        goms = {pair: GridOrderMaker(client, pair) for pair in spairs}
         # for pair in spairs:
-            # print(pair, ": ", data[pair]["atr_grid"])
+        #     print(pair, ": ", data[pair]["atr_grid"])
         # print(spairs)
         print("positions: ", positions)
     else:
