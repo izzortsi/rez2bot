@@ -10,13 +10,14 @@ import numpy as np
 # %%
 
 parser = argparse.ArgumentParser()
+
 parser.add_argument("-s", "--symbol", type=str)
 parser.add_argument("-side", "--side", type=int)
+parser.add_argument("-ge", "--grid_end", type=float, default=None)
+
 parser.add_argument("-tp", "--take_profit", type=float, default=0.33)
-parser.add_argument("-side", "--side", type=int)
 parser.add_argument("-q", "--quantity", type=int, default=1)
 # parser.add_argument("-gr", "--grid_range", nargs=2, type=float)
-parser.add_argument("-ge", "--grid_end", type=float, default=None)
 # parser.add_argument("-gr", "--grid_range", nargs=2, type=float)
 # parser.add_argument("-gs", "--grid_step", type=float, default=0.12)
 args = parser.parse_args()
@@ -37,8 +38,13 @@ B = "BUY"
 # %%
 
 
-        
+import time
+from binance.client import Client
+client = Client(api_key, api_secret)
+int(time.time() * 1000) - client.get_server_time()['serverTime']
 
+# %%
+(int(time.time() * 1000) - client.get_server_time()['serverTime'])/(1000*60)
 
 
 # %%
