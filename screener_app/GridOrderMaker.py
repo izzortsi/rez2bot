@@ -122,7 +122,7 @@ class GridOrderMaker:
                 self.entry_price = float(self.position[0]["entryPrice"])
                 self.qty = self.position[0]["positionAmt"]
 
-                self.price_grid = np.geomspace(self.entry_price, self.grid_end], num=5, dtype=float)
+                self.price_grid = np.geomspace(self.entry_price, self.grid_end, num=5, dtype=float)
                 
                 # tp_price = f_tp_price(price, tp, lev, side=side)
                 # sl_price = f_sl_price(price, sl, lev, side=side)
@@ -226,7 +226,7 @@ class GridOrderMaker:
 # %%
 def main():
     gom = GridOrderMaker(client, symbol)
-    gom.send_order_grid(symbol, take_profit, qty, side, ge)
+    gom.send_order_grid(symbol, take_profit, qty, side, grid_end)
 
 if __name__=="__main__":
     main()    
