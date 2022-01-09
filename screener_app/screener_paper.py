@@ -179,8 +179,9 @@ def process_all_stats(all_stats):
 def filter_perps(perps, price_position_range=[0.3, 0.7]):
     screened_symbols = []
     price_positions = []
+    price_change = []
     for row in perps:
-        if "USDT" in row.symbol.iloc[-1] and not ("_" in row.symbol.iloc[-1]):
+        if "USDT" in row.symbol.iloc[-1] and not ("_" in row.symbol.iloc[-1]) and not ("BTCDOMUSDT" == row.symbol.iloc[-1]):
             # screened_symbols.append(row)
             price_position = (
                 float(row.lastPrice.iloc[-1]) - float(row.lowPrice.iloc[-1])
@@ -189,6 +190,9 @@ def filter_perps(perps, price_position_range=[0.3, 0.7]):
             # print(price_position)
             price_positions.append(price_position)  
             row["pricePosition"] = price_position
+
+            price_change.append(float(row["priceChangePercent"]))
+            
             if (
                 # price_position <= 0.2 or price_position >= 0.8
                 price_position <= price_position_range[0]
@@ -197,8 +201,8 @@ def filter_perps(perps, price_position_range=[0.3, 0.7]):
                 # if float(row.priceChangePercent.iloc[-1]) >= -1:
                 # print(price_position)
                 screened_symbols.append(row)
-    print(sum(np.array(price_positions))/len(perps))
-
+    print(f"avg price position: {sum(np.array(price_positions))/len(perps)}")
+    print(f"avg % price change: {sum(np.array(price_change))/len(perps)}")
     return screened_symbols
 
 
