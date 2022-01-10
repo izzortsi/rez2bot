@@ -4,12 +4,15 @@ from binance.client import Client
 from binance.enums import *
 from threading import Thread, local
 from datetime import datetime
+from plotly.subplots import make_subplots
+
 import numpy as np
 import pandas_ta as ta
 import time
 import os
 import pandas as pd
 import argparse
+import plotly.graph_objects as go
 
 # %%
 
@@ -139,10 +142,14 @@ def compute_indicators(klines, coefs=np.array([1.0, 1.364, 1.618, 1.854, 2.0, 2.
     sup_grid_coefs = coefs
     inf_grid_coefs = -1.0 * coefs
 
+    hmean = klines.high.ewm(span=w_atr).mean()
+    lmean = klines.low.ewm(span=w_atr).mean()
+    global_volatility = (((hmean/lmean).mean()-1)*100)
+    
     close_ema = klines["close"].ewm(span=w_atr, min_periods=w_atr).mean()
     close_std = klines["close"].ewm(span=w_atr, min_periods=w_atr).std()
 
-    local_volatility = (close_std/close_ema).mean()*100; print("local_volatility", local_volatility)
+    local_volatility = (close_std/close_ema).mean()*100
 
     grid_coefs = np.concatenate((np.sort(inf_grid_coefs), sup_grid_coefs))
     atr_grid = [close_ema + atr * coef for coef in grid_coefs]
@@ -151,7 +158,7 @@ def compute_indicators(klines, coefs=np.array([1.0, 1.364, 1.618, 1.854, 2.0, 2.
     inf_grid = [close_ema - atr * coef for coef in grid_coefs]
     sup_grid = [close_ema + atr * coef for coef in grid_coefs]
 
-    return macd_hist, atr, inf_grid, sup_grid, close_ema, atr_grid, local_volatility
+    return macd_hist, atr, inf_grid, sup_grid, close_ema, atr_grid, local_volatility, global_volatility
 
 
 # generating signals
@@ -183,6 +190,7 @@ def filter_perps(perps, price_position_range=[0.3, 0.7]):
     screened_symbols = []
     price_positions = []
     price_change = []
+    daily_volatilities =[]
     for row in perps:
         if "USDT" in row.symbol.iloc[-1] and not ("_" in row.symbol.iloc[-1]) and not ("BTCDOMUSDT" == row.symbol.iloc[-1]):
             # screened_symbols.append(row)
@@ -193,8 +201,8 @@ def filter_perps(perps, price_position_range=[0.3, 0.7]):
             # print(price_position)
             price_positions.append(price_position)  
             row["pricePosition"] = price_position
-            row["globalVolatility"] = 100-(float(row.lowPrice.iloc[-1])/float(row.highPrice.iloc[-1]))*100
-            print(row["globalVolatility"])
+            row["dailyVolatility"] = (float(row.highPrice.iloc[-1])/float(row.lowPrice.iloc[-1]) - 1)*100
+            daily_volatilities.append(row["dailyVolatility"])
             price_change.append(float(row["priceChangePercent"]))
             
             if (
@@ -205,8 +213,10 @@ def filter_perps(perps, price_position_range=[0.3, 0.7]):
                 # if float(row.priceChangePercent.iloc[-1]) >= -1:
                 # print(price_position)
                 screened_symbols.append(row)
-    print(f"avg price position: {sum(np.array(price_positions))/len(perps)}")
-    print(f"avg % price change: {sum(np.array(price_change))/len(perps)}")
+    print("MARKET SUMMARY:")                
+    print(f"avg price position: {sum(np.array(price_positions))/len(price_positions)}")
+    print(f"avg daily volatility: {sum(np.array(daily_volatilities))/len(daily_volatilities)}")
+    print(f"avg % price change: {sum(np.array(price_change))/len(price_change)}")
     return screened_symbols
 
 
@@ -216,7 +226,7 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
     # df = pd.DataFrame.from_dict({})
     df = []
     data = {}
-
+    shown_data = []
     # for symbol in symbols.symbol:
     for index, row in symbols.iterrows():
         symbol = row.symbol
@@ -235,7 +245,7 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
         # df = buffer.data_window
         dw = data_window
         #w_atr = 5
-        hist, atr, inf_grid, sup_grid, close_ema, atr_grid, local_volatility = compute_indicators(
+        hist, atr, inf_grid, sup_grid, close_ema, atr_grid, local_volatility, global_volatility = compute_indicators(
             dw, coefs, w1=12, w2=26, w3=8, w_atr=w_atr, step=0.12
         )
 
@@ -260,10 +270,19 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
             "close_ema": close_ema,
             "atr_grid": atr_grid,
             "local_volatility": local_volatility,
+            "global_volatility": global_volatility,
         }
 
         if signal != 0:
-            print(symbol, ": ", "signal:", signal, "intensity:", intensity, "bands:", bands)
+
+            print(
+            f"""{symbol}:
+                signal: {signal}
+                bands: {bands}
+                local_volatility: {local_volatility}
+                global_volatility: {global_volatility} #
+            """)
+
             signals[symbol] = bands
             df.append(
                 row.filter(
@@ -276,6 +295,9 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
                     ]
                 )
             )
+
+            shown_data.append(pd.DataFrame([[symbol, signal, data[symbol]["signals"], data[symbol]["local_volatility"], data[symbol]["global_volatility"]]], columns = ["symbol", "signal", "bands", "local_volatility", "global_volatility"]))
+
             if paper and update_positions:
                 if signal > 0:
                     positions[symbol] = [1, sum(np.array(bands) * np.array(inf_grid)[:, -1])/sum(np.array(bands)), 0]
@@ -305,11 +327,11 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
                     
                     
                 # print(symbol, ": ", "signal:", signal, "intensity:", intensity, "bands:", bands)
-                print("positions:", positions[symbol])
+                # print("positions:", positions[symbol])
 
 
         # signals[symbol] = [signal, df]
-    return signals, df, data, positions, cpnl
+    return signals, df, data, positions, cpnl, shown_data
 
 def prescreen():
     all_stats = client.futures_ticker()
@@ -319,23 +341,21 @@ def prescreen():
     return filtered_perps
 
 def postscreen(filtered_perps, paper=False, positions={}, cpnl={}, update_positions=True):
-    signals, rows, data, positions, cpnl = generate_market_signals(filtered_perps, coefs, interval, limit=99, paper=paper, positions = positions, cpnl=cpnl, update_positions=update_positions)    
-    return signals, rows, data, positions, cpnl
+    signals, rows, data, positions, cpnl, shown_data = generate_market_signals(filtered_perps, coefs, interval, limit=99, paper=paper, positions = positions, cpnl=cpnl, update_positions=update_positions)    
+    return signals, rows, data, positions, cpnl, shown_data
 
 def updatescreen(positions, cpnl):
-    signals, rows, data, positions, cpnl = generate_market_signals(filtered_perps, coefs, interval, limit=99, paper=True, positions = positions, cpnl=cpnl, update_positions=False)    
-    return signals, rows, data, positions, cpnl
+    signals, rows, data, positions, cpnl, shown_data = generate_market_signals(filtered_perps, coefs, interval, limit=99, paper=True, positions = positions, cpnl=cpnl, update_positions=False)    
+    return signals, rows, data, positions, cpnl, shown_data
 
 def screen():
     all_stats = client.futures_ticker()
     perps = process_all_stats(all_stats)
     filtered_perps = filter_perps(perps, price_position_range=price_position_range)
     filtered_perps = pd.concat(filtered_perps, axis=0)
-    signals, rows, data, positions = generate_market_signals(filtered_perps, coefs, interval, update_positions=True)
-    return signals, rows, data, positions
+    signals, rows, data, positions, shown_data = generate_market_signals(filtered_perps, coefs, interval, update_positions=True)
+    return signals, rows, data, positions, shown_data
 
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 
 def plot_single_atr_grid(df, atr, atr_grid, close_ema, hist):
@@ -440,14 +460,15 @@ if __name__ == "__main__":
     filtered_perps = prescreen()
     print(filtered_perps)
     
-    signals, rows, data, positions, cpnl = postscreen(filtered_perps, paper=pt, update_positions=True)
+    signals, rows, data, positions, cpnl, shown_data = postscreen(filtered_perps, paper=pt, update_positions=True)
     if len(rows) > 0:
+        sdata = pd.concat(shown_data, axis=0)
         sdf = pd.concat(rows, axis=1).transpose()
         spairs = list(sdf.symbol)
         # for pair in spairs:
             # print(pair, ": ", data[pair]["atr_grid"])
-        # print(spairs)
-        print("positions: ", positions)
+        print(sdata)
+        # print("positions: ", positions)
     else:
         print("Nothing found :( ")
 #%%
