@@ -493,8 +493,3 @@ fig.update_layout(hovermode="x unified")
 
 fig.update_traces(xaxis='x')
 fig.show()
-!!
-
-!!
-
-!!

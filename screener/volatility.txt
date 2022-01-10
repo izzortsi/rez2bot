@@ -1,0 +1,9 @@
+hmean2 = df.high.ewm(span=w1).mean()
+lmean2 = df.low.ewm(span=w1).mean()
+
+hmean3 = df.high.ewm(span=w2).mean()
+lmean3 = df.low.ewm(span=w2).mean()
+
+global_volatility = (((hmean1/lmean1).mean()-1)*100)
+local_volatility1 = (hmean2.iloc[-1]/lmean2.iloc[-1] - 1)*100
+local_volatility2 = (hmean3.iloc[-1]/lmean3.iloc[-1] - 1)*100
