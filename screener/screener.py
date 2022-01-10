@@ -279,8 +279,7 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
             f"""{symbol}:
                 signal: {signal}
                 bands: {bands}
-                local_volatility: {local_volatility}
-                global_volatility: {global_volatility} #
+                volatility: {(local_volatility + global_volatility)/2} #
             """)
 
             signals[symbol] = bands

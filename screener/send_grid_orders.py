@@ -11,8 +11,8 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("-s", "--symbol", type=str)
 parser.add_argument("-side", "--side", type=int)
-parser.add_argument("-gr", "--grid_range", type=float, default=None)
-
+parser.add_argument("-ge", "--grid_end", type=float, default=None)
+parser.add_argument("-gs", "--grid_step", type=float, default=0.16)
 parser.add_argument("-tp", "--take_profit", type=float, default=0.33)
 parser.add_argument("-q", "--quantity", type=int, default=1)
 # parser.add_argument("-gr", "--grid_range", nargs=2, type=float)
@@ -22,6 +22,7 @@ args = parser.parse_args()
 side = args.side
 symbol = args.symbol
 grid_end = args.grid_end
+grid_step = args.grid_step
 take_profit = args.take_profit
 qty = args.quantity
 # %%
@@ -74,35 +75,22 @@ def send_order_grid(symbol, tp, qty, side, ge, price_formatter, protect=False, s
         counterside = "SELL"
     grid_end = ge        
     # grid_coefs = np.arange(gr[0], gr[1], gs)
+
+    position = client.futures_position_information(symbol=symbol)
+    entry_price = float(position[0]["entryPrice"])
+    qty = position[0]["positionAmt"]
+    price_grid = np.geomspace(entry_price, grid_end, num=5, dtype=float)
     
-    try:
-        new_position = client.futures_create_order(
-            symbol=symbol,
-            side=side,
-            type="MARKET",
-            quantity=qty,
-            priceProtect=protect,
-            workingType="CONTRACT_PRICE",
-        )
-    except BinanceAPIException as error:
-        print(type(error))
-        print("positioning, ", error)
-    else:
-        position = client.futures_position_information(symbol=symbol)
-        entry_price = float(position[0]["entryPrice"])
-        qty = position[0]["positionAmt"]
-        price_grid = np.geomspace(entry_price, grid_end, num=5, dtype=float)
-        
-        # tp_price = f_tp_price(price, tp, lev, side=side)
-        # sl_price = f_sl_price(price, sl, lev, side=side)
-        tp_price = price_formatter(
-            compute_exit(entry_price, tp, side=side)
-        )
-        print(
-            f"""price: {entry_price}
-                  tp_price: {tp_price}
-                  """
-        )
+    # tp_price = f_tp_price(price, tp, lev, side=side)
+    # sl_price = f_sl_price(price, sl, lev, side=side)
+    tp_price = price_formatter(
+        compute_exit(entry_price, tp, side=side)
+    )
+    print(
+        f"""price: {entry_price}
+              tp_price: {tp_price}
+              """
+    )
 
 
 if __name__ == "__main__":
