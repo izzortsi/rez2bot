@@ -2,7 +2,7 @@
 
 from binance.client import Client
 from binance.enums import *
-from threading import Thread, local
+from threading import Thread
 from datetime import datetime
 import numpy as np
 import pandas_ta as ta
@@ -10,7 +10,7 @@ import time
 import os
 import pandas as pd
 import argparse
-
+import concurrent.futures
 # %%
 
 
@@ -140,9 +140,7 @@ def compute_indicators(klines, coefs=np.array([1.0, 1.364, 1.618, 1.854, 2.0, 2.
     inf_grid_coefs = -1.0 * coefs
 
     close_ema = klines["close"].ewm(span=w_atr, min_periods=w_atr).mean()
-    close_std = klines["close"].ewm(span=w_atr, min_periods=w_atr).std()
-
-    local_volatility = (close_std/close_ema).mean()*100; print("local_volatility", local_volatility)
+    # close_std = klines["close"].ewm(span=w_atr, min_periods=w_atr).std() #usar pra calcular volatilidade
 
     grid_coefs = np.concatenate((np.sort(inf_grid_coefs), sup_grid_coefs))
     atr_grid = [close_ema + atr * coef for coef in grid_coefs]
@@ -151,7 +149,7 @@ def compute_indicators(klines, coefs=np.array([1.0, 1.364, 1.618, 1.854, 2.0, 2.
     inf_grid = [close_ema - atr * coef for coef in grid_coefs]
     sup_grid = [close_ema + atr * coef for coef in grid_coefs]
 
-    return macd_hist, atr, inf_grid, sup_grid, close_ema, atr_grid, local_volatility
+    return macd_hist, atr, inf_grid, sup_grid, close_ema, atr_grid
 
 
 # generating signals
@@ -179,36 +177,41 @@ def process_all_stats(all_stats):
 
 
 # compute price position and check other stuff
-def filter_perps(perps, price_position_range=[0.3, 0.7]):
+def _function(row, price_positions, price_change, screened_symbols)
+    if "USDT" in row.symbol.iloc[-1] and not ("_" in row.symbol.iloc[-1]) and not ("BTCDOMUSDT" == row.symbol.iloc[-1]):
+        # screened_symbols.append(row)
+        price_position = (
+            float(row.lastPrice.iloc[-1]) - float(row.lowPrice.iloc[-1])
+        ) / (float(row.highPrice.iloc[-1]) - float(row.lowPrice.iloc[-1]))
+        
+        # print(price_position)
+        price_positions.append(price_position)  
+        row["pricePosition"] = price_position
+        price_change.append(float(row["priceChangePercent"]))
+        
+        if (
+            # price_position <= 0.2 or price_position >= 0.8
+            price_position <= price_position_range[0]
+            or price_position >= price_position_range[1]
+        ):  # and float(row.priceChangePercent.iloc[-1]) >= -2.0:
+            # if float(row.priceChangePercent.iloc[-1]) >= -1:
+            # print(price_position)
+            screened_symbols.append(row)
+
+def filter_perps(perps, price_position_range):
     screened_symbols = []
     price_positions = []
     price_change = []
-    for row in perps:
-        if "USDT" in row.symbol.iloc[-1] and not ("_" in row.symbol.iloc[-1]) and not ("BTCDOMUSDT" == row.symbol.iloc[-1]):
-            # screened_symbols.append(row)
-            price_position = (
-                float(row.lastPrice.iloc[-1]) - float(row.lowPrice.iloc[-1])
-            ) / (float(row.highPrice.iloc[-1]) - float(row.lowPrice.iloc[-1]))
-            
-            # print(price_position)
-            price_positions.append(price_position)  
-            row["pricePosition"] = price_position
-            row["globalVolatility"] = 100-(float(row.lowPrice.iloc[-1])/float(row.highPrice.iloc[-1]))*100
-            print(row["globalVolatility"])
-            price_change.append(float(row["priceChangePercent"]))
-            
-            if (
-                # price_position <= 0.2 or price_position >= 0.8
-                price_position >= price_position_range[0]
-                or price_position <= price_position_range[1]
-            ):  # and float(row.priceChangePercent.iloc[-1]) >= -2.0:
-                # if float(row.priceChangePercent.iloc[-1]) >= -1:
-                # print(price_position)
-                screened_symbols.append(row)
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = []
+        for row in perps:
+            futures.append(executor.submit(_function, row, price_positions, price_change, screened_symbols)
+        for future in concurrent.futures.as_completed(futures):
+            print(future.result())   
     print(f"avg price position: {sum(np.array(price_positions))/len(perps)}")
     print(f"avg % price change: {sum(np.array(price_change))/len(perps)}")
+    
     return screened_symbols
-
 
 def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, positions={}, cpnl={}, update_positions=False):
     # usdt_pairs = [f"{symbol}T" for symbol in symbols.pair]
@@ -216,100 +219,98 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
     # df = pd.DataFrame.from_dict({})
     df = []
     data = {}
-
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = []
+        for index, row in symbols.iterrows():
+            futures.append(executor.submit(_function2, client, row, data, price_change, screened_symbols)
+        for future in concurrent.futures.as_completed(futures):
+            print(future.result()) 
     # for symbol in symbols.symbol:
     for index, row in symbols.iterrows():
-        symbol = row.symbol
-        # print(symbol)
-        # print(type(symbol))
-        klines = client.futures_klines(symbol=symbol, interval=interval, limit=limit)
-        klines = process_futures_klines(klines)
-        # print(f"len klines: {len(klines)}")
-        data_window = klines.tail(window_length)
-        # data_window.index = range(window_length)
-        # print(f"len dw: {len(data_window)}")
-        data_window.index = range(len(data_window))
-        # data_window
 
-        # buffer = RingBuffer(window_length, interval, data_window)
-        # df = buffer.data_window
-        dw = data_window
-        #w_atr = 5
-        hist, atr, inf_grid, sup_grid, close_ema, atr_grid, local_volatility = compute_indicators(
-            dw, coefs, w1=12, w2=26, w3=8, w_atr=w_atr, step=0.12
-        )
-
-        signal, bands = generate_signal(dw, coefs, hist, inf_grid, sup_grid)
-        intensity = sum(bands)/sum(coefs)
-        
-        
-        # print("positions:", positions[symbol])
-
-        
-        print(f"Screening {symbol}...")
-
-        data[symbol] = {
-            "signals": bands,
-            "intensity": intensity,
-            "klines": klines,
-            "data_window": data_window,
-            "hist": hist,
-            "atr": atr,
-            "inf_grid": inf_grid,
-            "sup_grid": sup_grid,
-            "close_ema": close_ema,
-            "atr_grid": atr_grid,
-            "local_volatility": local_volatility,
-        }
-
-        if signal != 0:
-            print(symbol, ": ", "signal:", signal, "intensity:", intensity, "bands:", bands)
-            signals[symbol] = bands
-            df.append(
-                row.filter(
-                    items=[
-                        "symbol",
-                        "priceChangePercent",
-                        "lastPrice",
-                        "weightedAvgPrice",
-                        "pricePosition",
-                    ]
-                )
+def _function2(client, row, data, interval="15m", limit=99):
+    symbol = row.symbol
+    # print(symbol)
+    # print(type(symbol))
+    klines = client.futures_klines(symbol=symbol, interval=interval, limit=limit)
+    klines = process_futures_klines(klines)
+    # print(f"len klines: {len(klines)}")
+    data_window = klines.tail(window_length)
+    # data_window.index = range(window_length)
+    # print(f"len dw: {len(data_window)}")
+    data_window.index = range(len(data_window))
+    # data_window
+    # buffer = RingBuffer(window_length, interval, data_window)
+    # df = buffer.data_window
+    dw = data_window
+    #w_atr = 5
+    hist, atr, inf_grid, sup_grid, close_ema, atr_grid = compute_indicators(
+        dw, coefs, w1=12, w2=26, w3=8, w_atr=w_atr, step=0.12
+    )
+    signal, bands = generate_signal(dw, coefs, hist, inf_grid, sup_grid)
+    intensity = sum(bands)/sum(coefs)
+    
+    
+    # print("positions:", positions[symbol])
+    
+    print(f"Screening {symbol}...")
+    data[symbol] = {
+        "signals": bands,
+        "intensity": intensity,
+        "klines": klines,
+        "data_window": data_window,
+        "hist": hist,
+        "atr": atr,
+        "inf_grid": inf_grid,
+        "sup_grid": sup_grid,
+        "close_ema": close_ema,
+        "atr_grid": atr_grid,
+    }
+    if signal != 0:
+        print(symbol, ": ", "signal:", signal, "intensity:", intensity, "bands:", bands)
+        signals[symbol] = bands
+        df.append(
+            row.filter(
+                items=[
+                    "symbol",
+                    "priceChangePercent",
+                    "lastPrice",
+                    "weightedAvgPrice",
+                    "pricePosition",
+                ]
             )
-            if paper and update_positions:
-                if signal > 0:
-                    positions[symbol] = [1, sum(np.array(bands) * np.array(inf_grid)[:, -1])/sum(np.array(bands)), 0]
-                    # print(positions[symbol])
-                elif signal < 0:
-                    positions[symbol] = [-1, sum(np.array(bands) * np.array(sup_grid)[:, -1])/sum(np.array(bands)), 0]
-                    # print(positions[symbol])
-            if paper and not update_positions:
-
-                direction, value, pnl = positions[symbol]
-
-                if direction == 1:
-                    if 100*(df[-1].lastPrice - value)/value >= 0.32: #TP/Leverage
-                        positions[symbol] = [0, 0, 100*(df[-1].lastPrice - value)/value - 0.08] #close the position, update final pnl
-                        cpnl[symbol] += positions[symbol][-1]
-                        update_positions = True
-                    else:
-                        positions[symbol][-1] = 100*(df[-1].lastPrice - value)/value - 0.08 #update pnl
-
-                elif direction == -1:
-                    if -100*(value - df[-1].lastPrice)/value  >= 0.32:
-                        positions[symbol] = [0, 0, -100*(value - df[-1].lastPrice)/value - 0.08]
-                        cpnl[symbol] += positions[symbol][-1]
-                        update_positions = True
-                    else:
-                        positions[symbol][1] = -100*(value - df[-1].lastPrice)/value - 0.08 #update pnl
-                    
-                    
-                # print(symbol, ": ", "signal:", signal, "intensity:", intensity, "bands:", bands)
-                print("positions:", positions[symbol])
+        )
+        if paper and update_positions:
+            if signal > 0:
+                positions[symbol] = [1, sum(np.array(bands) * np.array(inf_grid)[:, -1])/sum(np.array(bands)), 0]
+                # print(positions[symbol])
+            elif signal < 0:
+                positions[symbol] = [-1, sum(np.array(bands) * np.array(sup_grid)[:, -1])/sum(np.array(bands)), 0]
+                # print(positions[symbol])
+        if paper and not update_positions:
+            direction, value, pnl = positions[symbol]
+            if direction == 1:
+                if 100*(df[-1].lastPrice - value)/value >= 0.32: #TP/Leverage
+                    positions[symbol] = [0, 0, 100*(df[-1].lastPrice - value)/value - 0.08] #close the position, update final pnl
+                    cpnl[symbol] += positions[symbol][-1]
+                    update_positions = True
+                else:
+                    positions[symbol][-1] = 100*(df[-1].lastPrice - value)/value - 0.08 #update pnl
+            elif direction == -1:
+                if -100*(value - df[-1].lastPrice)/value  >= 0.32:
+                    positions[symbol] = [0, 0, -100*(value - df[-1].lastPrice)/value - 0.08]
+                    cpnl[symbol] += positions[symbol][-1]
+                    update_positions = True
+                else:
+                    positions[symbol][1] = -100*(value - df[-1].lastPrice)/value - 0.08 #update pnl
+                
+                
+            # print(symbol, ": ", "signal:", signal, "intensity:", intensity, "bands:", bands)
+            print("positions:", positions[symbol])
 
 
         # signals[symbol] = [signal, df]
-    return signals, df, data, positions, cpnl
+    return signals, df, data, positions, cpnl    
 
 def prescreen():
     all_stats = client.futures_ticker()
