@@ -64,17 +64,17 @@ def compute_exit(entry_price, target_profit, side, entry_fee=0.04, exit_fee=0.04
     return exit_price
 
 class GridOrderMaker:
-    def __init__(self, client, symbol, grid_end=None):
+    def __init__(self, client, symbol, qty, grid_end=None):
         self.client = client
         self.is_positioned = False
         self.side = None
         self.counterside = None
         self.entry_price = None
         self.tp_price = None
-        self.qty = None
-        self.symbols = symbol.upper()
+        self.qty = qty
+        self.symbol = symbol.upper()
         self.grid_end = grid_end
-        # self.formatters = {symbol: self.set_price_formats(symbol) for symbol in symbols}
+        self.set_price_formats()
 
         self.order_grid = []
     
@@ -84,8 +84,8 @@ class GridOrderMaker:
             format = FORMATS[self.symbol]
             qty_precision = int(format["quantityPrecision"])
             price_precision = int(format["pricePrecision"])
-            # print(qty_precision)
-            # print(price_precision)
+            print(qty_precision)
+            print(price_precision)
             notional = 5
             min_qty = 1 / 10 ** qty_precision
             ticker = self.client.get_symbol_ticker(symbol=self.symbol)
@@ -99,10 +99,10 @@ class GridOrderMaker:
             print(self.price_formatter(price))    
 
     def send_order_grid(self, symbol, tp, qty, side, ge, gs=0.12,  protect=False, sl=None):
-        if side == "SELL":
+        if side == -1:
             self.side = "SELL"
             self.counterside = "BUY"
-        elif side == "BUY":
+        elif side == 1:
             self.side = "BUY"
             self.counterside = "SELL"
 
@@ -111,6 +111,7 @@ class GridOrderMaker:
 
         if not self.is_positioned:
             try:
+                print(qty)
                 new_position = self.client.futures_create_order(
                     symbol=symbol,
                     side=self.side,
@@ -188,7 +189,7 @@ class GridOrderMaker:
                             price=band_price,
                             workingType="CONTRACT_PRICE",
                             quantity=self.qty,
-                            reduceOnly=True,
+                            reduceOnly=False,
                             priceProtect=protect,
                             timeInForce="GTC",
                         )
@@ -200,12 +201,16 @@ class GridOrderMaker:
 
 
 
-    def send_tp_order(self, symbol, side, tp, protect=False):
-        if side == "SELL":
-            counterside = "BUY"
-        elif side == "BUY":
-            counterside = "SELL"
-        self.position = self.client.futures_position_information(symbol=symbol)
+    def send_tp_order(self, side, tp=0.33, protect=False):
+        
+        if side == -1:
+            self.side = "SELL"
+            self.counterside = "BUY"
+        elif side == 1:
+            self.side = "BUY"
+            self.counterside = "SELL"
+        
+        self.position = self.client.futures_position_information(symbol=self.symbol)
         self.entry_price = float(self.position[0]["entryPrice"])
         self.qty = self.position[0]["positionAmt"]
         # tp_price = f_tp_price(price, tp, lev, side=side)
@@ -214,8 +219,8 @@ class GridOrderMaker:
 
         try:
             self.tp_order = self.client.futures_create_order(
-                symbol=symbol,
-                side=counterside,
+                symbol=self.symbol,
+                side=self.counterside,
                 type="LIMIT",
                 price=self.tp_price,
                 workingType="CONTRACT_PRICE",
@@ -231,7 +236,7 @@ class GridOrderMaker:
 
 # %%
 def main():
-    gom = GridOrderMaker(client, symbol)
+    gom = GridOrderMaker(client, symbol, qty)
     gom.send_order_grid(symbol, take_profit, qty, side, grid_end)
 
 if __name__=="__main__":

@@ -66,10 +66,10 @@ def set_price_formats(symbol, client, qty):
 
 
 def send_order_grid(symbol, tp, qty, side, ge, price_formatter, protect=False, sl=None):
-    if side == "SELL":
+    if side == -1:
         side = "SELL"
         counterside = "BUY"
-    elif side == "BUY":
+    elif side == 1:
         side = "BUY"
         counterside = "SELL"
     grid_end = ge        
