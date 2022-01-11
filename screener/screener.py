@@ -31,7 +31,7 @@ parser.add_argument("-wl", "--window_length", type=int, default=52)
 parser.add_argument("-wa", "--atr_window_length", type=int, default=8)
 parser.add_argument("-e", nargs="+", help="my help message", type=float,
                         default=(1.364, 1.618, 1.854, 2.0, 2.364))
-
+parser.add_argument("--debug", type=bool, default=False)
 args = parser.parse_args()
 
 api_key = os.environ.get("API_KEY")
@@ -51,6 +51,7 @@ price_position_range = [ppl, pph]
 w_atr = args.atr_window_length
 pt = args.paper_trade
 coefs = np.array(args.e)
+debug = args.debug
 
 def to_datetime_tz(arg, timedelta=-pd.Timedelta("03:00:00"), unit="ms", **kwargs):
     """
@@ -257,7 +258,23 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
 
         
         print(f"Screening {symbol}...")
-
+        if debug:
+            print(f"{symbol}")
+            # print(f"price position: {(float(dw.iloc[-1].close)-float(dw.iloc[-1].lowPrice))/(float(dw.iloc[-1].highPrice)-float(dw.iloc[-1].lowPrice))}")
+            # print(f"daily volatility: {(float(dw.iloc[-1].highPrice)/float(dw.iloc[-1].lowPrice) - 1)*100}")
+            # print(f"price change: {float(dw.iloc[-1].priceChangePercent)}")
+            print(f"bands: {bands}")
+            print(f"signal: {signal}")
+            # print(f"intensity: {intensity}")
+            print(f"close_ema: {close_ema.iloc[-1]}")
+            # print(f"atr: {atr.iloc[-1]}")
+            # print(f"inf_grid: {inf_grid.iloc[-1]}")
+            # print(f"sup_grid: {sup_grid.iloc[-1]}")
+            # print(f"local_volatility: {local_volatility}")
+            # print(f"global_volatility: {global_volatility}")
+            # print(f"hist: {hist.iloc[-1]}")
+            print(f"atr_grid: {atr_grid.iloc[-1]}")
+            print(f"\n")
         data[symbol] = {
             "signals": bands,
             "intensity": intensity,
