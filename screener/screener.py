@@ -32,6 +32,7 @@ parser.add_argument("-wa", "--atr_window_length", type=int, default=8)
 parser.add_argument("-e", nargs="+", help="my help message", type=float,
                         default=(1.364, 1.618, 1.854, 2.0, 2.364))
 parser.add_argument("--debug", type=bool, default=False)
+parser.add_argument("--momentum", type=bool, default=False)
 args = parser.parse_args()
 
 api_key = os.environ.get("API_KEY")
@@ -52,6 +53,7 @@ w_atr = args.atr_window_length
 pt = args.paper_trade
 coefs = np.array(args.e)
 debug = args.debug
+momentum = args.momentum
 
 def to_datetime_tz(arg, timedelta=-pd.Timedelta("03:00:00"), unit="ms", **kwargs):
     """
@@ -168,17 +170,31 @@ def generate_signal(df, coefs, hist, inf_grid, sup_grid):
     bands = [0 for _ in coefs]
     for i, (inf_band, sup_band) in enumerate(zip(inf_grid, sup_grid)):
         # print(hist.iloc[-1] > hist.iloc[-2])
-        if (
-            df.close.iloc[-1] <= inf_band.iloc[-1]
-        ):  # and (hist.iloc[-1] > hist.iloc[-2]):
-            bands[i] = coefs[i]
-            signal = 1
-        elif (
-            df.close.iloc[-1] >= sup_band.iloc[-1]
-        ):  # and (hist.iloc[-1] < hist.iloc[-2]):
-            bands[i] = -coefs[i]
-            signal = -1
+        if momentum:
+            if (
+                df.close.iloc[-1] <= inf_band.iloc[-1]
+            ) and (hist.iloc[-1] > hist.iloc[-2]):
+                bands[i] = coefs[i]
+                signal = 1
+            elif (
+                df.close.iloc[-1] >= sup_band.iloc[-1]
+            ) and (hist.iloc[-1] < hist.iloc[-2]):
+                bands[i] = -coefs[i]
+                signal = -1
+        else:
+            if (
+                df.close.iloc[-1] <= inf_band.iloc[-1]
+            ):
+                bands[i] = coefs[i]
+                signal = 1
+            elif (
+                df.close.iloc[-1] >= sup_band.iloc[-1]
+            ):
+                bands[i] = -coefs[i]
+                signal = -1
+            
     return signal, bands
+
 
 
 def process_all_stats(all_stats):
