@@ -15,7 +15,7 @@ api_secret = os.environ.get("API_SECRET")
 client = Client(api_key, api_secret)
 
 # %%
-symbol = "DUSKUSDT"
+symbol = "TRXUSDT"
 side = 1
 leverage = 17
 tp = 0.33
@@ -114,7 +114,7 @@ formatted_order_size
 position = client.futures_position_information(symbol=symbol)
 entry_price = float(position[0]["entryPrice"])
 position_qty = position[0]["positionAmt"]
-
+print(json.dumps(position[0], indent=2))
 # %%
 
 if side == -1:
@@ -144,6 +144,19 @@ formatted_qty = qty_formatter(maxQty, qty_precision)
 formatted_qty, tp_price
 # %%
 
+
+
+# %%
+new_position = client.futures_create_order(
+        symbol=symbol,
+        side="BUY",
+        type="MARKET",
+        quantity=formatted_order_size,
+        priceProtect=False,
+        workingType="CONTRACT_PRICE",
+)
+
+#%%
 try:
     tp_order = client.futures_create_order(
         symbol=symbol,
@@ -159,13 +172,4 @@ try:
 except BinanceAPIException as error:
     print("tp order, ", error)
 
-
-# %%
-new_position = client.futures_create_order(
-        symbol=symbol,
-        side="BUY",
-        type="MARKET",
-        quantity=formatted_order_size,
-        priceProtect=False,
-        workingType="CONTRACT_PRICE",
-)
+#%%
