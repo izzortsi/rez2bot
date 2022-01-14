@@ -35,8 +35,8 @@ parser.add_argument("-lev", "--leverage", type=int, default=17)
 args = parser.parse_args()
 side = args.side
 symbol = args.symbol
-grid_end = args.grid_end
-grid_step = args.grid_step
+ge = args.grid_end
+gs = args.grid_step
 tp = args.take_profit
 sl = args.stop_loss
 leverage =args.leverage
@@ -162,8 +162,6 @@ def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=Non
     
     formatted_order_size = qty_formatter(order_size, qty_precision)
 
-    global is_positioned
-
     if not is_positioned:
         try:
             new_position = client.futures_create_order(
@@ -174,6 +172,8 @@ def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=Non
                 priceProtect=False,
                 workingType="CONTRACT_PRICE",
             )
+            global is_positioned
+            is_positioned = True
         except BinanceAPIException as error:
             print("positioning, ", error)
         else:
@@ -186,8 +186,12 @@ def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=Non
 
 
             #the grid
-
-            grid_entries = np.arange(start=entry_price, stop=ge+gs, step=gs)
+            grid_width = abs(ge - entry_price)
+            price_step = grid_width*gs
+            price_step = min(price_step, float(filters["stepSize"])*base_price)
+            grid_entries = np.arange(start=entry_price, stop=entry_price+price_step, step=price_step)
+            
+            # grid_entries = np.arange(start=1, stop=1+gs, step=gs)
             grid_orders = []
             
             for i, entry in enumerate(grid_entries):
