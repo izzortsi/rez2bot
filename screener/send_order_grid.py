@@ -82,12 +82,12 @@ def apply_symbol_filters(filters, base_price, qty=1.1):
     qty_precision = int(filters["quantityPrecision"])
     min_qty = float(filters["minQty"])
     step_size = float(filters["tickSize"])
-    print(price_precision, qty_precision, min_qty, step_size)
+    print("price_precision", price_precision, "qty_precision", qty_precision, "min_qty", min_qty, "step_size", step_size)
     minNotional = 5
     min_qty = max(minNotional/base_price, min_qty)
-    print(min_qty, base_price)
+    print("minqty:", min_qty)
     order_size = qty * min_qty
-    print(order_size)
+    print("ordersize", order_size)
 
     return price_precision, qty_precision, min_qty, order_size, step_size
 
@@ -144,10 +144,11 @@ def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=Non
             is_positioned = True
         except BinanceAPIException as error:
             print("positioning, ", error)    
-    if is_positioned:
+    else:
 
         position = client.futures_position_information(symbol=symbol)
         entry_price = float(position[0]["entryPrice"])
+        mark_price = float(position[0]["markPrice"])
         position_qty = abs(float(position[0]["positionAmt"]))
 
         print(json.dumps(position[0], indent=2))
@@ -156,9 +157,12 @@ def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=Non
 
         #the grid
         grid_width = abs(ge - entry_price)
-        
+        print("grid_width", grid_width)
         price_step = grid_width*gs
-        price_step = max(price_step, step_size*base_price)
+        print("grid_width*gs", price_step)
+        print("stepsize*markprice", 1.5*step_size*mark_price)
+        price_step = max(price_step, 1.5*step_size*mark_price)
+        print("price_step: ", price_step)
         grid_entries = np.arange(start=entry_price, stop=entry_price + grid_width, step=price_step)
         
         # grid_entries = np.arange(start=1, stop=1+gs, step=gs)
