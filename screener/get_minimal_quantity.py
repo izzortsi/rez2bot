@@ -16,9 +16,9 @@ api_secret = os.environ.get("API_SECRET")
 client = Client(api_key, api_secret)
 
 # %%
-symbol = "RVNUSDT"
+symbol = "KAVAUSDT"
 side = -1
-tp = 0.8
+tp = 0.4
 leverage = 17
 qty = 1.1
 
@@ -119,14 +119,34 @@ side, counterside
 # %%
 
 #%%
-new_position = client.futures_create_order(
-        symbol=symbol,
-        side=side,
-        type="MARKET",
-        quantity=formatted_order_size,
-        priceProtect=False,
-        workingType="CONTRACT_PRICE",
-)
+def start_position():
+    new_position = client.futures_create_order(
+            symbol=symbol,
+            side=side,
+            type="MARKET",
+            quantity=formatted_order_size,
+            priceProtect=False,
+            workingType="CONTRACT_PRICE",
+    )
+    return new_position
+def send_tp_order():
+    try:
+        tp_order = client.futures_create_order(
+            symbol=symbol,
+            side=counterside,
+            type="LIMIT",
+            price=tp_price,
+            workingType="CONTRACT_PRICE",
+            quantity=formatted_qty,
+            reduceOnly=False,
+            priceProtect=False,
+            timeInForce="GTC",
+        )
+    except BinanceAPIException as error:
+        print("tp order, ", error)
+# %%
+
+# start_position()
 
 # %%
 position = client.futures_position_information(symbol=symbol)
@@ -169,20 +189,7 @@ counterside
 
 formatted_order_size
 #%%
-try:
-    tp_order = client.futures_create_order(
-        symbol=symbol,
-        side=counterside,
-        type="LIMIT",
-        price=tp_price,
-        workingType="CONTRACT_PRICE",
-        quantity=formatted_qty,
-        reduceOnly=False,
-        priceProtect=False,
-        timeInForce="GTC",
-    )
-except BinanceAPIException as error:
-    print("tp order, ", error)
+
 
 #%%
 
@@ -201,4 +208,15 @@ tp_order = client.futures_create_order(
     timeInForce="GTC",
 )
 
+#%%
+tp_order_mkt = client.futures_create_order(
+    symbol=symbol,
+    side=counterside,
+    type="TAKE_PROFIT_MARKET",
+    stopPrice=tp_price,
+    closePosition=True, 
+    workingType="CONTRACT_PRICE",
+    priceProtect=False,
+    timeInForce="GTC",
+)
 #%%
