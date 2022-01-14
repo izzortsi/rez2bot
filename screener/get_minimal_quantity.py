@@ -16,7 +16,7 @@ api_secret = os.environ.get("API_SECRET")
 client = Client(api_key, api_secret)
 
 # %%
-symbol = "DUSKUSDT"
+symbol = "RVNUSDT"
 side = -1
 tp = 0.8
 leverage = 17
@@ -43,6 +43,7 @@ def apply_symbol_filters(filters, base_price, qty=1.1):
     price_precision = int(filters["pricePrecision"])    
     qty_precision = int(filters["quantityPrecision"])
     min_qty = float(filters["minQty"])
+    step_size = float(filters["stepSize"])
     print(price_precision, qty_precision, min_qty)
     minNotional = 5
     min_qty = max(minNotional/base_price, min_qty)
@@ -50,7 +51,7 @@ def apply_symbol_filters(filters, base_price, qty=1.1):
     order_size = qty * min_qty
     print(order_size)
 
-    return price_precision, qty_precision, min_qty, order_size
+    return price_precision, qty_precision, min_qty, order_size, step_size
 
 def compute_exit(entry_price, target_profit, side, entry_fee=0.04, exit_fee=0.04):
     if side == "BUY":
@@ -95,11 +96,11 @@ filters = get_filters()
 symbolFilters = filters[symbol]
 print(symbol, symbolFilters)
 base_price = float(stats_24h["lowPrice"])
-price_precision, qty_precision, min_qty, order_size = apply_symbol_filters(symbolFilters, base_price, qty=1.1)
+price_precision, qty_precision, min_qty, order_size, step_size = apply_symbol_filters(symbolFilters, base_price, qty=1.1)
 # filtered_stuff = apply_symbol_filters(symbolFilters, base_price, qty=1.1)
 # filtered_stuff
 # print(min_qty, np.ceil(min_qty))
-price_precision, qty_precision, min_qty, order_size
+price_precision, qty_precision, min_qty, order_size, step_size
 # %%
 formatted_order_size = qty_formatter(order_size, qty_precision)
 formatted_order_size
