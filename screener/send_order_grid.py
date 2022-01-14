@@ -27,7 +27,7 @@ parser.add_argument("-ge", "--grid_end", type=float, default=0.0)
 parser.add_argument("-gs", "--grid_step", type=float, default=0.16)
 parser.add_argument("-tp", "--take_profit", type=float, default=0.33)
 parser.add_argument("-sl", "--stop_loss", type=float, default=0.33)
-parser.add_argument("-q", "--quantity", type=int, default=1.1)
+parser.add_argument("-q", "--quantity", type=float, default=1.1)
 parser.add_argument("-lev", "--leverage", type=int, default=17)
 parser.add_argument("-ip", "--is_positioned", type=bool, default=True)
 # parser.add_argument("-gr", "--grid_range", nargs=2, type=float)
@@ -122,7 +122,7 @@ def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=Non
     symbolFilters = filters[symbol]
     
     base_price = float(stats_24h["lowPrice"])
-    price_precision, qty_precision, min_qty, order_size, step_size = apply_symbol_filters(symbolFilters, base_price, qty=1.1)
+    price_precision, qty_precision, min_qty, order_size, step_size = apply_symbol_filters(symbolFilters, base_price, qty=qty)
     
     qty_formatter = lambda ordersize, qty_precision: f"{float(ordersize):.{qty_precision}f}"
     price_formatter = lambda price, price_precision: f"{float(price):.{price_precision}f}"
@@ -145,7 +145,7 @@ def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=Non
         except BinanceAPIException as error:
             print("positioning, ", error)    
     else:
-
+        
         position = client.futures_position_information(symbol=symbol)
         entry_price = float(position[0]["entryPrice"])
         mark_price = float(position[0]["markPrice"])
