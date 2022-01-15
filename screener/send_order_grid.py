@@ -108,7 +108,7 @@ def compute_exit(entry_price, target_profit, side, entry_fee=0.04, exit_fee=0.04
 
 
 
-def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=None):
+def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=None, is_positioned=False):
     
     if side == -1:
         side = "SELL"
@@ -128,7 +128,6 @@ def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=Non
     price_formatter = lambda price, price_precision: f"{float(price):.{price_precision}f}"
     
     formatted_order_size = qty_formatter(order_size, qty_precision)
-    global is_positioned
     
     if not is_positioned:
         try:
@@ -144,123 +143,110 @@ def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=Non
             is_positioned = True
         except BinanceAPIException as error:
             print("positioning, ", error)    
-    else:
+    
         
-        position = client.futures_position_information(symbol=symbol)
-        entry_price = float(position[0]["entryPrice"])
-        mark_price = float(position[0]["markPrice"])
-        position_qty = abs(float(position[0]["positionAmt"]))
-
-        print(json.dumps(position[0], indent=2))
-
-
-
-        #the grid
-        grid_width = abs(ge - entry_price)
-        print("grid_width", grid_width)
-        price_step = grid_width*gs
-        print("grid_width*gs", price_step)
-        print("stepsize*markprice", 1.5*step_size*mark_price)
-        price_step = max(price_step, 1.5*step_size*mark_price)
-        print("price_step: ", price_step)
-        grid_entries = np.arange(start=entry_price, stop=entry_price + grid_width, step=price_step)
-        
-        # grid_entries = np.arange(start=1, stop=1+gs, step=gs)
-        grid_orders = []
-        
-        print(f"""
-        ge = {grid_entries}
-        gw = {grid_width}
-        ps = {price_step}
-        """)
-        
-        for i, entry in enumerate(grid_entries):
-            if ge == 0.0:
-                break
-            formatted_grid_entry_price = price_formatter(entry, price_precision)
-
-            try:
-                grid_order = client.futures_create_order(
-                symbol=symbol,
-                side=side,
-                type="LIMIT",
-                price=formatted_grid_entry_price,
-                workingType="CONTRACT_PRICE",
-                quantity=formatted_order_size,
-                reduceOnly=False,
-                priceProtect=False,
-                timeInForce="GTC",
-                # newOrderRespType="RESULT",
-                )
-                grid_orders.append(grid_order)
-            except BinanceAPIException as error:
-                print(f"grid order {i}, ", error)
-
-
-        avg_entry = sum(grid_entries)/len(grid_entries)
-        max_position_amount = len(grid_entries)*order_size
-        formatted_max_order_size = qty_formatter(max_position_amount, qty_precision)
-
-        grid_tp_price = price_formatter(
-            compute_exit(avg_entry, tp, side=side),
-            price_precision,
-        )
-
-        formatted_tp_price = price_formatter(
-            compute_exit(entry_price, tp, side=side),
-            price_precision,
-        )
-
-        grid_stop_price = price_formatter(
-            compute_exit(avg_entry, tp*0.9, side=side),
-            price_precision,
-        )
-
-        print(
-            f"""price: {entry_price}
-                tp_price: {grid_tp_price}
-                """
-        )
-        print(
-            f"""price: {entry_price}
-                tp_price: {grid_stop_price}
-                """
-        )
-
-        print(
-            f"""price: {entry_price}
-                grid_tp_price: {grid_tp_price}
-                grid_stop_price: {grid_stop_price}
-                tp_price: {formatted_tp_price}
-                """
-        )
-
+    position = client.futures_position_information(symbol=symbol)
+    entry_price = float(position[0]["entryPrice"])
+    mark_price = float(position[0]["markPrice"])
+    position_qty = abs(float(position[0]["positionAmt"]))
+    print(json.dumps(position[0], indent=2))
+    #the grid
+    grid_width = abs(ge - entry_price)
+    print("grid_width", grid_width)
+    price_step = grid_width*gs
+    print("grid_width*gs", price_step)
+    print("stepsize*markprice", 1.5*step_size*mark_price)
+    price_step = max(price_step, 1.5*step_size*mark_price)
+    print("price_step: ", price_step)
+    grid_entries = np.arange(start=entry_price, stop=entry_price + grid_width, step=price_step)
+    
+    # grid_entries = np.arange(start=1, stop=1+gs, step=gs)
+    grid_orders = []
+    
+    print(f"""
+    ge = {grid_entries}
+    gw = {grid_width}
+    ps = {price_step}
+    """)
+    
+    for i, entry in enumerate(grid_entries):
+        if ge == 0.0:
+            break
+        formatted_grid_entry_price = price_formatter(entry, price_precision)
         try:
-            # tp_order = client.futures_create_order(
-            #     symbol=symbol,
-            #     side=counterside,
-            #     type="TAKE_PROFIT",
-            #     price=grid_tp_price,
-            #     stopPrice=grid_stop_price,
-            #     workingType="CONTRACT_PRICE",
-            #     quantity=formatted_max_order_size,
-            #     reduceOnly=True,
-            #     priceProtect=False,
-            #     timeInForce="GTC",
-            # )
-            tp_order_mkt = client.futures_create_order(
-                symbol=symbol,
-                side=counterside,
-                type="TAKE_PROFIT_MARKET",
-                stopPrice=formatted_tp_price,
-                closePosition=True, 
-                workingType="CONTRACT_PRICE",
-                priceProtect=False,
-                timeInForce="GTC",
-            )    
+            grid_order = client.futures_create_order(
+            symbol=symbol,
+            side=side,
+            type="LIMIT",
+            price=formatted_grid_entry_price,
+            workingType="CONTRACT_PRICE",
+            quantity=formatted_order_size,
+            reduceOnly=False,
+            priceProtect=False,
+            timeInForce="GTC",
+            # newOrderRespType="RESULT",
+            )
+            grid_orders.append(grid_order)
         except BinanceAPIException as error:
-            print(f"take profit order, ", error)
+            print(f"grid order {i}, ", error)
+    avg_entry = sum(grid_entries)/len(grid_entries)
+    max_position_amount = len(grid_entries)*order_size
+    formatted_max_order_size = qty_formatter(max_position_amount, qty_precision)
+    grid_tp_price = price_formatter(
+        compute_exit(avg_entry, tp, side=side),
+        price_precision,
+    )
+    formatted_tp_price = price_formatter(
+        compute_exit(entry_price, tp, side=side),
+        price_precision,
+    )
+    grid_stop_price = price_formatter(
+        compute_exit(avg_entry, tp*0.9, side=side),
+        price_precision,
+    )
+    print(
+        f"""price: {entry_price}
+            tp_price: {grid_tp_price}
+            """
+    )
+    print(
+        f"""price: {entry_price}
+            tp_price: {grid_stop_price}
+            """
+    )
+    print(
+        f"""price: {entry_price}
+            grid_tp_price: {grid_tp_price}
+            grid_stop_price: {grid_stop_price}
+            tp_price: {formatted_tp_price}
+            """
+    )
+    try:
+        # tp_order = client.futures_create_order(
+        #     symbol=symbol,
+        #     side=counterside,
+        #     type="TAKE_PROFIT",
+        #     price=grid_tp_price,
+        #     stopPrice=grid_stop_price,
+        #     workingType="CONTRACT_PRICE",
+        #     quantity=formatted_max_order_size,
+        #     reduceOnly=True,
+        #     priceProtect=False,
+        #     timeInForce="GTC",
+        # )
+        tp_order_mkt = client.futures_create_order(
+            symbol=symbol,
+            side=counterside,
+            type="TAKE_PROFIT_MARKET",
+            stopPrice=formatted_tp_price,
+            closePosition=True, 
+            workingType="CONTRACT_PRICE",
+            priceProtect=False,
+            timeInForce="GTC",
+        )    
+    except BinanceAPIException as error:
+        print(f"take profit order, ", error)
 
 if __name__ == "__main__":
-    send_order_grid(client, symbol, tp, side, ge, gs=gs, protect=False, sl=sl)
+    send_order_grid(client, symbol, tp, side, ge, gs=gs, protect=False, sl=sl, is_positioned=is_positioned)
     
