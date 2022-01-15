@@ -8,44 +8,6 @@ import os
 import numpy as np
 import pandas as pd
 import argparse
-# %%
-
-api_key = os.environ.get("API_KEY")
-api_secret = os.environ.get("API_SECRET")
-client = Client(api_key, api_secret)
-
-# %%
-
-
-
-
-parser = argparse.ArgumentParser()
-
-parser.add_argument("-s", "--symbol", type=str)
-parser.add_argument("-side", "--side", type=int)
-parser.add_argument("-ge", "--grid_end", type=float, default=0.0)
-parser.add_argument("-gs", "--grid_step", type=float, default=0.16)
-parser.add_argument("-tp", "--take_profit", type=float, default=0.33)
-parser.add_argument("-sl", "--stop_loss", type=float, default=0.33)
-parser.add_argument("-q", "--quantity", type=float, default=1.1)
-parser.add_argument("-lev", "--leverage", type=int, default=17)
-parser.add_argument("-ip", "--is_positioned", type=bool, default=False)
-# parser.add_argument("-gr", "--grid_range", nargs=2, type=float)
-# parser.add_argument("-gr", "--grid_range", nargs=2, type=float)
-# parser.add_argument("-gs", "--grid_step", type=float, default=0.12)
-args = parser.parse_args()
-side = args.side
-symbol = args.symbol
-ge = args.grid_end
-gs = args.grid_step
-tp = args.take_profit
-sl = args.stop_loss
-leverage =args.leverage
-is_positioned = args.is_positioned
-qty = args.quantity
-
-# %%
-
 
 
 api_key = os.environ.get("API_KEY")
@@ -62,7 +24,7 @@ client = Client(api_key, api_secret)
 
 # %%
 
-stats_24h = client.futures_ticker(symbol=symbol)
+
 
 # %%
 qty_formatter = lambda ordersize, qty_precision: f"{float(ordersize):.{qty_precision}f}"
@@ -247,5 +209,30 @@ def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=Non
         print(f"take profit order, ", error)
 
 if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s", "--symbol", type=str)
+    parser.add_argument("-side", "--side", type=int)
+    parser.add_argument("-ge", "--grid_end", type=float, default=0.0)
+    parser.add_argument("-gs", "--grid_step", type=float, default=0.16)
+    parser.add_argument("-tp", "--take_profit", type=float, default=0.33)
+    parser.add_argument("-sl", "--stop_loss", type=float, default=0.33)
+    parser.add_argument("-q", "--quantity", type=float, default=1.1)
+    parser.add_argument("-lev", "--leverage", type=int, default=17)
+    parser.add_argument("-ip", "--is_positioned", type=bool, default=False)
+    # parser.add_argument("-gr", "--grid_range", nargs=2, type=float)
+    # parser.add_argument("-gr", "--grid_range", nargs=2, type=float)
+    # parser.add_argument("-gs", "--grid_step", type=float, default=0.12)
+    args = parser.parse_args()
+    side = args.side
+    symbol = args.symbol
+    ge = args.grid_end
+    gs = args.grid_step
+    tp = args.take_profit
+    sl = args.stop_loss
+    leverage =args.leverage
+    is_positioned = args.is_positioned
+    qty = args.quantity
+    stats_24h = client.futures_ticker(symbol=symbol)
     send_order_grid(client, symbol, tp, side, ge, gs=gs, protect=False, sl=sl, is_positioned=is_positioned)
     

@@ -1,4 +1,5 @@
 # %%
+from order_grid import *
 
 from binance.client import Client
 from binance.enums import *
@@ -33,7 +34,14 @@ parser.add_argument("-e", nargs="+", help="my help message", type=float,
                         default=(1.364, 1.618, 1.854, 2.0, 2.364))
 parser.add_argument("--debug", type=bool, default=False)
 parser.add_argument("--momentum", type=bool, default=False)
+parser.add_argument("--open_grids", type=bool, default=False)
 parser.add_argument("--plot_screened", type=bool, default=False)
+
+parser.add_argument("-tp", "--take_profit", type=float, default=0.33)                
+parser.add_argument("-sl", "--stop_loss", type=float, default=0.33)                
+parser.add_argument("-q", "--quantity", type=float, default=1.1)
+parser.add_argument("-lev", "--leverage", type=int, default=17)                
+
 args = parser.parse_args()
 
 api_key = os.environ.get("API_KEY")
@@ -55,7 +63,15 @@ pt = args.paper_trade
 coefs = np.array(args.e)
 debug = args.debug
 momentum = args.momentum
-plot_screened = args.plot_screened
+open_grids = args.open_grids
+plot_screened= args.plot_screened
+
+tp = args.take_profit
+sl = args.stop_loss
+leverage = args.leverage
+qty = args.quantity
+
+
 
 def to_datetime_tz(arg, timedelta=-pd.Timedelta("03:00:00"), unit="ms", **kwargs):
     """
@@ -333,11 +349,12 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
             )
 
             shown_data.append(pd.DataFrame([[symbol, signal, data[symbol]["signals"], data[symbol]["local_volatility"], data[symbol]["global_volatility"]]], columns = ["symbol", "signal", "bands", "local_volatility", "global_volatility"]))
-            if plot_screened:
-                plot_symboL_atr_grid(symbol, data)
+            side = signal
+            if open_grids:
+                send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=qty, protect=False, sl=sl, is_positioned=False)
+                if plot_screened:
+                    plot_symboL_atr_grid(symbol, data)
                 
-
-
             if paper and update_positions:
                 if signal > 0:
                     positions[symbol] = [1, sum(np.array(bands) * np.array(inf_grid)[:, -1])/sum(np.array(bands)), 0]
