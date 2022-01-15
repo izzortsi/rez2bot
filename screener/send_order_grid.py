@@ -29,7 +29,7 @@ parser.add_argument("-tp", "--take_profit", type=float, default=0.33)
 parser.add_argument("-sl", "--stop_loss", type=float, default=0.33)
 parser.add_argument("-q", "--quantity", type=float, default=1.1)
 parser.add_argument("-lev", "--leverage", type=int, default=17)
-parser.add_argument("-ip", "--is_positioned", type=bool, default=True)
+parser.add_argument("-ip", "--is_positioned", type=bool, default=False)
 # parser.add_argument("-gr", "--grid_range", nargs=2, type=float)
 # parser.add_argument("-gr", "--grid_range", nargs=2, type=float)
 # parser.add_argument("-gs", "--grid_step", type=float, default=0.12)
@@ -140,7 +140,6 @@ def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=Non
                 workingType="CONTRACT_PRICE",
             )
             
-            is_positioned = True
         except BinanceAPIException as error:
             print("positioning, ", error)    
     
