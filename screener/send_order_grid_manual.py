@@ -91,20 +91,20 @@ def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=Non
     
     formatted_order_size = qty_formatter(order_size, qty_precision)
     
-    if not is_positioned:
-        try:
-            new_position = client.futures_create_order(
-                symbol=symbol,
-                side=side,
-                type="MARKET",
-                quantity=formatted_order_size,
-                priceProtect=False,
-                workingType="CONTRACT_PRICE",
-            )
-            
-        except BinanceAPIException as error:
-            print("positioning, ", error)    
-    
+
+    try:
+        new_position = client.futures_create_order(
+            symbol=symbol,
+            side=side,
+            type="MARKET",
+            quantity=formatted_order_size,
+            priceProtect=False,
+            workingType="CONTRACT_PRICE",
+        )
+        print(new_position)    
+    except BinanceAPIException as error:
+        print("positioning, ", error)    
+
         
     position = client.futures_position_information(symbol=symbol)
     entry_price = float(position[0]["entryPrice"])
@@ -116,10 +116,12 @@ def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=Non
     print("grid_width", grid_width)
     price_step = grid_width*gs
     print("grid_width*gs", price_step)
-    print("stepsize*markprice", 1.5*step_size*mark_price)
-    price_step = max(price_step, 1.5*step_size*mark_price)
+    print("stepsize*markprice", 1.1*step_size*mark_price)
+    # price_step = max(price_step, 1.1*step_size*mark_price)
     print("price_step: ", price_step)
-    grid_entries = np.arange(start=entry_price, stop=entry_price + grid_width, step=price_step)
+    make_grid = lambda ep, w, s, side: np.arange(start=ep, stop=ep+w, step=s) if side == "SELL" else np.arange(start=ep, stop=ep-w, step=-s)
+    grid_entries = make_grid(entry_price, grid_width, price_step, side)
+    # grid_entries = np.arange(start=entry_price, stop=entry_price + grid_width, step=price_step)
     
     # grid_entries = np.arange(start=1, stop=1+gs, step=gs)
     grid_orders = []
@@ -134,6 +136,7 @@ def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=Non
         if ge == 0.0:
             break
         formatted_grid_entry_price = price_formatter(entry, price_precision)
+        print(formatted_grid_entry_price)
         try:
             grid_order = client.futures_create_order(
             symbol=symbol,
@@ -211,6 +214,7 @@ def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=Non
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
+
     parser.add_argument("-s", "--symbol", type=str)
     parser.add_argument("-side", "--side", type=int)
     parser.add_argument("-ge", "--grid_end", type=float, default=0.0)
@@ -219,11 +223,12 @@ if __name__ == "__main__":
     parser.add_argument("-sl", "--stop_loss", type=float, default=0.33)
     parser.add_argument("-q", "--quantity", type=float, default=1.1)
     parser.add_argument("-lev", "--leverage", type=int, default=17)
-    parser.add_argument("-ip", "--is_positioned", type=bool, default=False)
+    parser.add_argument("--is_positioned", type=bool)
     # parser.add_argument("-gr", "--grid_range", nargs=2, type=float)
     # parser.add_argument("-gr", "--grid_range", nargs=2, type=float)
     # parser.add_argument("-gs", "--grid_step", type=float, default=0.12)
     args = parser.parse_args()
+
     side = args.side
     symbol = args.symbol
     ge = args.grid_end
@@ -233,6 +238,10 @@ if __name__ == "__main__":
     leverage =args.leverage
     is_positioned = args.is_positioned
     qty = args.quantity
+
     stats_24h = client.futures_ticker(symbol=symbol)
+    print(args)
+    print("is_positioned:", is_positioned)
+    is_positioned = False
     send_order_grid(client, symbol, tp, side, ge, gs=gs, protect=False, sl=sl, is_positioned=is_positioned)
     

@@ -1,6 +1,6 @@
 # %%
 from order_grid import *
-
+# from order_grid_arithmetic import send_arithmetic_order_grid
 from binance.client import Client
 from binance.enums import *
 from threading import Thread, local
@@ -35,6 +35,8 @@ parser.add_argument("-e", nargs="+", help="my help message", type=float,
 parser.add_argument("--debug", type=bool, default=False)
 parser.add_argument("--momentum", type=bool, default=False)
 parser.add_argument("--open_grids", type=bool, default=False)
+
+parser.add_argument("-ag", "--arithmetic_grid", type=bool, default=False)
 parser.add_argument("--plot_screened", type=bool, default=False)
 
 parser.add_argument("-tp", "--take_profit", type=float, default=0.33)                
@@ -64,6 +66,7 @@ coefs = np.array(args.e)
 debug = args.debug
 momentum = args.momentum
 open_grids = args.open_grids
+arithmetic_grid = args.arithmetic_grid
 plot_screened= args.plot_screened
 
 tp = args.take_profit
@@ -351,6 +354,10 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
             shown_data.append(pd.DataFrame([[symbol, signal, data[symbol]["signals"], data[symbol]["local_volatility"], data[symbol]["global_volatility"]]], columns = ["symbol", "signal", "bands", "local_volatility", "global_volatility"]))
             side = signal
             if open_grids:
+                # if arithmetic_grid:
+                #     send_arithmetic_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=qty, protect=False, sl=sl, ag=True, is_positioned=False)
+                # else:
+                #     send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=qty, protect=False, sl=sl, is_positioned=False)
                 send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=qty, protect=False, sl=sl, is_positioned=False)
                 if plot_screened:
                     plot_symboL_atr_grid(symbol, data)

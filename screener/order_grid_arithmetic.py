@@ -69,10 +69,21 @@ def compute_exit(entry_price, target_profit, side, entry_fee=0.04, exit_fee=0.04
 
 
 
-def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=1.1, sl=None, protect=False, is_positioned=False):
+def send_arithmetic_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=1.1, sl=None, ag=False, protect=False, is_positioned=False):
     # print(inf_grid)
-    
-    grid_entries = [band.values[-1] for band in inf_grid] if side == 1 else [band.values[-1] for band in sup_grid]
+    if ag:
+        if side == 1:
+            ge = inf_grid[-1].values[-1]
+            base_price = inf_grid[-1].values[0]
+            print(ge)
+            
+        elif side == -1:
+            ge = sup_grid[-1].values[-1]
+            base_price = sup_grid[-1].values[0]
+            print(ge)
+    else:
+        grid_entries = [band.values[-1] for band in inf_grid] if side == 1 else [band.values[-1] for band in sup_grid]
+        base_price = grid_entries[0]
 
     if side == -1:
         side = "SELL"
@@ -80,20 +91,20 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=1.1, sl=No
     elif side == 1:
         side = "BUY"
         counterside = "SELL"
-    print(grid_entries)
+    
     filters = get_filters()
     symbolFilters = filters[symbol]
     # inf_grid
     
     # print(inf_grid[:, -1])
-    base_price = grid_entries[0]
+    
     price_precision, qty_precision, min_qty, order_size, step_size = apply_symbol_filters(symbolFilters, base_price, qty=qty)
     
     qty_formatter = lambda ordersize, qty_precision: f"{float(ordersize):.{qty_precision}f}"
     price_formatter = lambda price, price_precision: f"{float(price):.{price_precision}f}"
     
     formatted_order_size = qty_formatter(order_size, qty_precision)
-    
+    print(formatted_order_size)
 
     try:
         new_position = client.futures_create_order(
@@ -114,20 +125,23 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=1.1, sl=No
         position_qty = abs(float(position[0]["positionAmt"]))
         print(json.dumps(position[0], indent=2))
         #the grid
-        # grid_width = abs(ge - entry_price)
-        # print("grid_width", grid_width)
-        # price_step = grid_width*gs
-        # print("grid_width*gs", price_step)
-        # print("stepsize*markprice", 1.5*step_size*mark_price)
-        # price_step = max(price_step, 1.5*step_size*mark_price)
-        # print("price_step: ", price_step)
-       
-       
-        # grid_entries = np.arange(start=1, stop=1+gs, step=gs)
+        if ag:
+            grid_width = abs(ge - entry_price)
+            print("grid_width", grid_width)
+            price_step = grid_width*0.1
+            print("grid_width*gs", price_step)
+            print("stepsize*markprice", 1.5*step_size*mark_price)
+            price_step = max(price_step, 1.1*step_size*mark_price)
+            print("price_step: ", price_step)
+            make_grid = lambda ep, w, s, side: np.arange(start=ep, stop=ep+w, step=s) if side == "SELL" else np.arange(start=ep, stop=ep-w, step=-s)
+            grid_entries = make_grid(entry_price, grid_width, price_step, side)
+            # grid_entries = np.arange(start=entry_price, stop=entry_price + grid_width, step=price_step)
+        
+        # print(grid_entries)
         grid_orders = []
         
         print(f"""
-        ge = {grid_entries}
+        grid_entries = {grid_entries}
         """)
         # gw = {grid_width}
         # ps = {price_step}
