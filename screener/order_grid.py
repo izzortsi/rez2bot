@@ -107,7 +107,10 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
         )
             
     except BinanceAPIException as error:
+        
         print("positioning, ", error)    
+        if error.code == -2019:
+            return "stop"
     else:
         position = client.futures_position_information(symbol=symbol)
         entry_price = float(position[0]["entryPrice"])

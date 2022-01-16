@@ -31,7 +31,7 @@ parser.add_argument("-pph", "--price_position_high", type=float, default=0.5)
 parser.add_argument("-wl", "--window_length", type=int, default=52)
 parser.add_argument("-wa", "--atr_window_length", type=int, default=8)
 parser.add_argument("-e", nargs="+", help="my help message", type=float,
-                        default=(1.364, 1.618, 1.854, 2.0, 2.364))
+                        default=(1.0, 1.364, 1.5, 1.618, 1.854, 2.0, 2.364))
 parser.add_argument("--debug", type=bool, default=False)
 parser.add_argument("--momentum", type=bool, default=False)
 parser.add_argument("--open_grids", type=bool, default=False)
@@ -372,7 +372,9 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
                 #     send_arithmetic_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=qty, protect=False, sl=sl, ag=True, is_positioned=False)
                 # else:
                 #     send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=qty, protect=False, sl=sl, is_positioned=False)
-                send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=qty, protect=False, sl=sl, is_positioned=False)
+                res = send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=qty, protect=False, sl=sl, is_positioned=False)
+                if res == "stop":
+                    break
                 if plot_screened:
                     plot_symboL_atr_grid(symbol, data)
                 
@@ -422,7 +424,7 @@ def postscreen(filtered_perps, paper=False, positions={}, cpnl={}, update_positi
     signals, rows, data, positions, cpnl, shown_data = generate_market_signals(filtered_perps, coefs, interval, limit=99, paper=paper, positions = positions, cpnl=cpnl, update_positions=update_positions)    
     return signals, rows, data, positions, cpnl, shown_data
 
-def updatescreen(positions, cpnl):
+def updatescreen(filtered_perps, positions, cpnl):
     signals, rows, data, positions, cpnl, shown_data = generate_market_signals(filtered_perps, coefs, interval, limit=99, paper=True, positions = positions, cpnl=cpnl, update_positions=False)    
     return signals, rows, data, positions, cpnl, shown_data
 
@@ -552,8 +554,9 @@ def plot_all_screened(screened_pairs, data):
     for pair in screened_pairs:
         plot_symboL_atr_grid(pair, data)
 
-if __name__ == "__main__":
-    
+
+def main():
+
     filtered_perps = prescreen()
     print(filtered_perps)
     
@@ -573,41 +576,15 @@ if __name__ == "__main__":
         # plot_all_screened(spairs, data)
         # for pair in spairs:
             # print(pair, ": ", data[pair]["atr_grid"])
-        print(sdata)
-        # print("positions: ", positions)
-    else:
-        print("Nothing found :( ")
-#%%
-
-
-def main():
-
-    filtered_perps = prescreen()
-    print(filtered_perps)
-    
-    signals, rows, data, positions, cpnl, shown_data = postscreen(filtered_perps, paper=pt, update_positions=True)
-    
-    if len(rows) > 0:
-        sdata = pd.concat(shown_data, axis=0)
-        sdf = pd.concat(rows, axis=1).transpose()
-        spairs = list(sdf.symbol)
-
-        cleaner = Cleaner(client, spairs)
-        while len(cleaner.spairs) > 0:
-            time.sleep(5)
-            positions_df =pd.DataFrame.from_dict(cleaner.positions, orient='index')
-            print(f"{len(cleaner.spairs)} positions open")
-            print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
-        # plot_all_screened(spairs, data)
-        # for pair in spairs:
-            # print(pair, ": ", data[pair]["atr_grid"])
-        print(sdata)
+        print("""
+        All positions closed.
+        Reescreening..."""
+        )
         # print("positions: ", positions)
     else:
         print("Nothing found :( ")  
 
-
 if __name__ == "__main__":
     while True:
         main()
-        
+
