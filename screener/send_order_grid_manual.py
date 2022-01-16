@@ -122,7 +122,7 @@ def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=Non
     make_grid = lambda ep, w, s, side: np.arange(start=ep, stop=ep+w, step=s) if side == "SELL" else np.arange(start=ep, stop=ep-w, step=-s)
     grid_entries = make_grid(entry_price, grid_width, price_step, side)
     # grid_entries = np.arange(start=entry_price, stop=entry_price + grid_width, step=price_step)
-    
+    exit_price = (1+tp/100)*entry_price if side == "BUY" else (1-tp/100)*entry_price
     # grid_entries = np.arange(start=1, stop=1+gs, step=gs)
     grid_orders = []
     
@@ -130,13 +130,19 @@ def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=Non
     ge = {grid_entries}
     gw = {grid_width}
     ps = {price_step}
+    exit = {exit_price}
     """)
+
     
+
     for i, entry in enumerate(grid_entries):
         if ge == 0.0:
             break
         formatted_grid_entry_price = price_formatter(entry, price_precision)
+        
+        formatted_grid_exit_price = price_formatter(exit_price, price_precision)
         print(formatted_grid_entry_price)
+        print(formatted_grid_exit_price)
         try:
             grid_order = client.futures_create_order(
             symbol=symbol,
@@ -151,6 +157,22 @@ def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=Non
             # newOrderRespType="RESULT",
             )
             grid_orders.append(grid_order)
+            try:
+                grid_order_tp = client.futures_create_order(
+                symbol=symbol,
+                side=counterside,
+                type="TAKE_PROFIT",
+                stopPrice = formatted_grid_exit_price,
+                price=formatted_grid_exit_price,
+                workingType="CONTRACT_PRICE",
+                quantity=formatted_order_size,
+                reduceOnly=True,
+                priceProtect=False,
+                timeInForce="GTC",
+                # newOrderRespType="RESULT",
+                )        
+            except BinanceAPIException as error:
+                print(f"grid order tp {i}, ", error)    
         except BinanceAPIException as error:
             print(f"grid order {i}, ", error)
     avg_entry = sum(grid_entries)/len(grid_entries)
