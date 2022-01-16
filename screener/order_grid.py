@@ -72,7 +72,8 @@ def compute_exit(entry_price, target_profit, side, entry_fee=0.04, exit_fee=0.04
 
 def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1, sl=None, protect=False, is_positioned=False):
     # print(inf_grid)
-    
+    # grid_orders = []
+    grid_orders = dict(entry = None, tp = None, sl = None, grid = [])
     grid_entries = [band.values[-1] for band in inf_grid] if side == 1 else [band.values[-1] for band in sup_grid]
 
     if side == -1:
@@ -105,6 +106,8 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
             priceProtect=False,
             workingType="CONTRACT_PRICE",
         )
+
+        grid_orders["entry"] = new_position
             
     except BinanceAPIException as error:
         
@@ -128,7 +131,7 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
        
        
         # grid_entries = np.arange(start=1, stop=1+gs, step=gs)
-        grid_orders = []
+        
         
         print(f"""
         ge = {grid_entries}
@@ -161,7 +164,7 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
                 timeInForce="GTC",
                 # newOrderRespType="RESULT",
                 )
-                grid_orders.append(grid_order)
+                grid_orders["grid"].append(grid_order)
             except BinanceAPIException as error:
                 print(f"grid order {i}, ", error)
         
@@ -204,7 +207,8 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
                 workingType="CONTRACT_PRICE",
                 priceProtect=False,
                 timeInForce="GTC",
-            )    
+            )
+            grid_orders["tp"] = tp_order_mkt    
         except BinanceAPIException as error:
             print(f"take profit order, ", error)
         finally:
@@ -228,9 +232,11 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
                         workingType="CONTRACT_PRICE",
                         priceProtect=False,
                         timeInForce="GTC",
-                    )    
+                    )
+                    grid_orders["sl"] = sl_order_mkt    
                 except BinanceAPIException as error:
                     print(f"stop loss order, ", error)
+        return grid_orders
 
 #%%
 def send_tpsl(client, symbol, tp, sl, side, protect=False):

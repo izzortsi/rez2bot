@@ -1,11 +1,14 @@
 # %%
 from order_grid import *
+from plot_functions import *
+from ring_buffer import RingBuffer
+from change_leverage_and_margin_type import change_leverage_and_margin
 # from order_grid_arithmetic import send_arithmetic_order_grid
 from binance.client import Client
 from binance.enums import *
 from threading import Thread, local
 from datetime import datetime
-from plotly.subplots import make_subplots
+
 
 import numpy as np
 import pandas_ta as ta
@@ -13,7 +16,7 @@ import time
 import os
 import pandas as pd
 import argparse
-import plotly.graph_objects as go
+
 
 # %%
 
@@ -37,6 +40,7 @@ parser.add_argument("--momentum", type=bool, default=False)
 parser.add_argument("--open_grids", type=bool, default=False)
 
 parser.add_argument("-ag", "--arithmetic_grid", type=bool, default=False)
+parser.add_argument("-gs", "--grid_step", type=float, default=0.0)
 parser.add_argument("--plot_screened", type=bool, default=False)
 
 parser.add_argument("-tp", "--take_profit", type=float, default=0.33)                
@@ -67,6 +71,7 @@ debug = args.debug
 momentum = args.momentum
 open_grids = args.open_grids
 arithmetic_grid = args.arithmetic_grid
+gs = args.grid_step
 plot_screened= args.plot_screened
 
 tp = args.take_profit
@@ -104,63 +109,49 @@ def process_futures_klines(klines):
     return klines
 
 class Cleaner(Thread):
-    def __init__(self, client, spairs):
+    def __init__(self, client, spairs, order_grids):
         Thread.__init__(self)
         self.setDaemon(True)
         self.client = client
         self.spairs = spairs
         self.positions = {}
+        self.order_grids = order_grids
         self.start()
 
     def run(self):
         while len(self.spairs) > 0:
-            check_positions(self.client, self.spairs, self.positions)
-            time.sleep(1)
+            check_positions(self.client, self.spairs, self.positions, self.order_grids)
+            time.sleep(5)
         
+def check_positions(client, spairs, positions, order_grids):
+    for symbol in spairs:
+        
+        is_closed = False
+        symbol_grid = order_grids[symbol]
+        position = client.futures_position_information(symbol=symbol)
+        positions[symbol] = position[0]
+        entry_price = float(position[0]["entryPrice"])
+        position_qty = float(position[0]["positionAmt"])
+        side = -1 if position_qty < 0 else 1
+        position_qty = abs(position_qty)
+        # print(json.dumps(position[0], indent=2))
+        
+        if entry_price == 0.0 and position_qty == 0.0: 
+            is_closed = True
+        
+        if is_closed == True:
+            client.futures_cancel_all_open_orders(symbol=symbol)
+            spairs.remove(symbol)
+            # positions.remove(symbol)
+            del positions[symbol]
+        else:
+            print(f"changed tp and sl for {symbol}'s position")
+            tp_id = symbol_grid["tp"]["orderId"]
+            client.futures_cancel_order(symbol=symbol, orderId=tp_id)
+            send_tpsl(client, symbol, tp, None, side, protect=False)
 
-class RingBuffer:
-    def __init__(self, window_length, granularity, data_window):
-        self.window_length = window_length
-        self.granularity = granularity
-        self.data_window = data_window
 
-    def _isfull(self):
-        if len(self.data_window) >= self.window_length:
-            return True
-
-    def push(self, row):
-        row.end_ts.iloc[-1] = self.data_window.end_ts.iloc[-2] + pd.Timedelta(
-            self.granularity
-        )
-        # print(row.init_ts.iloc[-1] - self.data_window.init_ts.iloc[-2])
-        if self._isfull():
-            # print(row.init_ts.iloc[-1])
-            # print(self.data_window.init_ts.iloc[-1])
-            # print(self.data_window.init_ts.iloc[-1] - row.init_ts.iloc[-1])
-            if row.init_ts.iloc[-1] - self.data_window.init_ts.iloc[-2] >= pd.Timedelta(
-                self.granularity
-            ):
-                # print(1)
-                self.data_window.drop(index=[0], axis=0, inplace=True)
-                # row.index[-1] = self.window_length - 1
-                # print(self.data_window.iloc[-1])
-                # print(row)
-                self.data_window = self.data_window.append(row, ignore_index=True)
-            else:
-                timestamp = to_datetime_tz(time.time(), unit="s")
-                row.init_ts.iloc[-1] = timestamp
-                # print(self.data_window.iloc[-1])
-                # print(row)
-
-                self.data_window.update(row)
-        # else:
-        #     if row.init_ts.iloc[-1] - self.data_window.init_ts.iloc[-2] >= pd.Timedelta(self.granularity):
-        #         # self.data_window.drop(index=[0], axis=0, inplace=True)
-        #         self.data_window = self.data_window.append(
-        #             row, ignore_index=True
-        #                 )
-
-def compute_indicators(klines, coefs=np.array([1.0, 1.364, 1.618, 1.854, 2.0, 2.364, 2.618]), w1=12, w2=26, w3=8, w_atr=8, step=0.4):
+def compute_indicators(klines, coefs=np.array([1.0, 1.364, 1.618, 1.854, 2.0, 2.364, 2.618]), w1=12, w2=26, w3=8, w_atr=8, step=0.0):
     # compute macd
     macd = pd.Series(
         klines["close"].ewm(span=w1, min_periods=w1).mean()
@@ -193,6 +184,7 @@ def compute_indicators(klines, coefs=np.array([1.0, 1.364, 1.618, 1.854, 2.0, 2.
     atr_grid = [close_ema + atr * coef for coef in grid_coefs]
 
     grid_coefs = sup_grid_coefs
+
     inf_grid = [close_ema - atr * coef for coef in grid_coefs]
     sup_grid = [close_ema + atr * coef for coef in grid_coefs]
 
@@ -279,6 +271,7 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
     df = []
     data = {}
     shown_data = []
+    order_grids = {}
     # for symbol in symbols.symbol:
     for index, row in symbols.iterrows():
         symbol = row.symbol
@@ -298,7 +291,7 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
         dw = data_window
         #w_atr = 5
         hist, atr, inf_grid, sup_grid, close_ema, atr_grid, local_volatility, global_volatility = compute_indicators(
-            dw, coefs, w1=12, w2=26, w3=8, w_atr=w_atr, step=0.12
+            dw, coefs, w1=12, w2=26, w3=8, w_atr=w_atr, step=gs
         )
 
         signal, bands = generate_signal(dw, coefs, hist, inf_grid, sup_grid)
@@ -365,7 +358,13 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
                 )
             )
 
-            shown_data.append(pd.DataFrame([[symbol, signal, data[symbol]["signals"], data[symbol]["local_volatility"], data[symbol]["global_volatility"]]], columns = ["symbol", "signal", "bands", "local_volatility", "global_volatility"]))
+            shown_data.append(
+                pd.DataFrame(
+                    [[symbol, signal, data[symbol]["signals"], data[symbol]["local_volatility"], data[symbol]["global_volatility"]]], 
+                    columns = ["symbol", "signal", "bands", "local_volatility", "global_volatility"]
+                        )
+                    )
+
             side = signal
             if open_grids:
                 # if arithmetic_grid:
@@ -375,6 +374,9 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
                 res = send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=qty, protect=False, sl=sl, is_positioned=False)
                 if res == "stop":
                     break
+                else:
+                    print(res["tp"])
+                    order_grids[symbol] = res
                 if plot_screened:
                     plot_symboL_atr_grid(symbol, data)
                 
@@ -411,7 +413,7 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
 
 
         # signals[symbol] = [signal, df]
-    return signals, df, data, positions, cpnl, shown_data
+    return signals, df, data, positions, cpnl, shown_data, order_grids
 
 def prescreen():
     all_stats = client.futures_ticker()
@@ -421,149 +423,30 @@ def prescreen():
     return filtered_perps
 
 def postscreen(filtered_perps, paper=False, positions={}, cpnl={}, update_positions=True):
-    signals, rows, data, positions, cpnl, shown_data = generate_market_signals(filtered_perps, coefs, interval, limit=99, paper=paper, positions = positions, cpnl=cpnl, update_positions=update_positions)    
-    return signals, rows, data, positions, cpnl, shown_data
+    signals, rows, data, positions, cpnl, shown_data, order_grids = generate_market_signals(filtered_perps, coefs, interval, limit=99, paper=paper, positions = positions, cpnl=cpnl, update_positions=update_positions)    
+    return signals, rows, data, positions, cpnl, shown_data, order_grids
 
 def updatescreen(filtered_perps, positions, cpnl):
-    signals, rows, data, positions, cpnl, shown_data = generate_market_signals(filtered_perps, coefs, interval, limit=99, paper=True, positions = positions, cpnl=cpnl, update_positions=False)    
-    return signals, rows, data, positions, cpnl, shown_data
+    signals, rows, data, positions, cpnl, shown_data, order_grids = generate_market_signals(filtered_perps, coefs, interval, limit=99, paper=True, positions = positions, cpnl=cpnl, update_positions=False)    
+    return signals, rows, data, positions, cpnl, shown_data, order_grids
 
 def screen():
     all_stats = client.futures_ticker()
     perps = process_all_stats(all_stats)
     filtered_perps = filter_perps(perps, price_position_range=price_position_range)
     filtered_perps = pd.concat(filtered_perps, axis=0)
-    signals, rows, data, positions, shown_data = generate_market_signals(filtered_perps, coefs, interval, update_positions=True)
-    return signals, rows, data, positions, shown_data
-
-def check_positions(client, spairs, positions):
-    for symbol in spairs:
-        
-        is_closed = False
-        
-        position = client.futures_position_information(symbol=symbol)
-        positions[symbol] = position[0]
-        entry_price = float(position[0]["entryPrice"])
-        position_qty = float(position[0]["positionAmt"])
-        side = -1 if position_qty < 0 else 1
-        position_qty = abs(position_qty)
-        # print(json.dumps(position[0], indent=2))
-        
-        if entry_price == 0.0 and position_qty == 0.0: 
-            is_closed = True
-        
-        if is_closed == True:
-            client.futures_cancel_all_open_orders(symbol=symbol)
-            spairs.remove(symbol)
-            # positions.remove(symbol)
-            del positions[symbol]
-        else:
-            send_tpsl(client, symbol, tp, None, side, protect=False)
-
-def plot_single_atr_grid(df, atr, atr_grid, close_ema, hist):
-    
-    
-    fig = make_subplots(rows=3, cols=4,
-        specs=[[{'rowspan': 2, 'colspan': 3}, None, None, {'rowspan': 2}],
-        [None, None, None, None],
-        [{'colspan': 3}, None, None, {}]],
-        vertical_spacing=0.075,
-        horizontal_spacing=0.08,
-        shared_xaxes=True,
-        )
-    # fig = make_subplots(rows=2, cols=1, shared_xaxes=True)
-
-    # %%
-    kl_go = go.Candlestick(x=df['init_ts'],
-                    open=df['open'],
-                    high=df['high'],
-                    low=df['low'],
-                    close=df['close'])
-
-
-    atr_go = go.Scatter(x=df.init_ts, y=atr,
-                                mode="lines",
-                                line=go.scatter.Line(color="gray"),
-                                showlegend=False)
-                                
-
-    ema_go = go.Scatter(x=df.init_ts, y=close_ema,
-                                mode="lines",
-                                # line=go.scatter.Line(color="blue"),
-                                showlegend=True,
-                                line=dict(color='royalblue', width=3),
-                                opacity=0.75,
-                                )
-
-    def hist_colors(hist):
-        diffs = hist.diff()
-        colors = diffs.apply(lambda x: "green" if x > 0 else "red")
-        return colors
-
-
-    _hist_colors = hist_colors(hist)
-
-
-    hist_go = go.Scatter(x=df.init_ts, y=hist,
-                                mode="lines+markers",
-                                # line=go.scatter.Line(color="blue"),
-                                showlegend=False,
-                                line=dict(color="black", width=3),
-                                opacity=1,
-                                marker=dict(color=_hist_colors, size=6),
-                                )
-
-    def plot_atr_grid(atr_grid, fig):
-        for atr_band in atr_grid:
-            if sum(atr_band) >= 1.2 * sum(close_ema):
-                color = 'red'
-            else:
-                color = "teal"
-            atr_go = go.Scatter(x=df.init_ts, y=atr_band,
-                                mode="lines",
-                                # line=go.scatter.Line(color="teal"),
-                                showlegend=False,
-                                line=dict(color=color, width=0.4), 
-                                opacity=.8,
-                                hoverinfo='skip')
-            fig.add_trace(atr_go, row=1, col=1)
-
-
-    fig.add_trace(kl_go, row=1, col=1)
-    fig.update(layout_xaxis_rangeslider_visible=False)
-    #fig.update_layout(title_text="___USDT@15m")
-    fig.update()
-
-    fig.add_trace(ema_go, row=1, col=1)
-    fig.add_trace(hist_go, row=3, col=1)
-    
-    plot_atr_grid(atr_grid, fig)
-
-    return fig
-
-def plot_symboL_atr_grid(symbol, data):
-    fig = plot_single_atr_grid(
-        data[symbol]["data_window"], 
-        data[symbol]["atr"], 
-        data[symbol]["atr_grid"], 
-        data[symbol]["close_ema"], 
-        data[symbol]["hist"],
-    )
-    fig.update_layout(title_text=f"{symbol}@{interval}")
-    fig.show()
-    # return fig
-
-def plot_all_screened(screened_pairs, data):
-    for pair in screened_pairs:
-        plot_symboL_atr_grid(pair, data)
-
+    signals, rows, data, positions, shown_data, order_grids = generate_market_signals(filtered_perps, coefs, interval, update_positions=True)
+    return signals, rows, data, positions, shown_data, order_grids
 
 def main():
-
+    try:
+        change_leverage_and_margin(leverage=leverage)
+    except Exception as e:
+        print(e)
     filtered_perps = prescreen()
     print(filtered_perps)
     
-    signals, rows, data, positions, cpnl, shown_data = postscreen(filtered_perps, paper=pt, update_positions=True)
+    signals, rows, data, positions, cpnl, shown_data, order_grids = postscreen(filtered_perps, paper=pt, update_positions=True)
     
     if len(rows) > 0:
         sdata = pd.concat(shown_data, axis=0)
@@ -571,7 +454,7 @@ def main():
         spairs = list(sdf.symbol)
 
         cleaner = Cleaner(client, spairs)
-        while len(cleaner.spairs) > 1:
+        while len(cleaner.spairs) >= 1:
             time.sleep(10)
             positions_df =pd.DataFrame.from_dict(cleaner.positions, orient='index')
             print(f"{len(cleaner.spairs)} positions open")
@@ -582,7 +465,7 @@ def main():
             # print(pair, ": ", data[pair]["atr_grid"])
         print("""
         All positions closed.
-        Reescreening..."""
+        Cleaning stuff..."""
         )
         # print("positions: ", positions)
     else:
@@ -591,4 +474,6 @@ def main():
 if __name__ == "__main__":
     while True:
         main()
+        time.sleep(20)
+        print("Reescreening...")
 
