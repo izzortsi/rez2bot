@@ -114,7 +114,7 @@ class Cleaner(Thread):
 
     def run(self):
         while len(self.spairs) > 0:
-            check_positions(self.client, self.spairs)
+            check_positions(self.client, self.spairs, self.positions)
             time.sleep(10)
         
 
@@ -566,8 +566,10 @@ if __name__ == "__main__":
 
         cleaner = Cleaner(client, spairs)
         while len(cleaner.spairs) > 0:
-            time.sleep(30)
-            print()
+            time.sleep(10)
+            positions_df =pd.DataFrame.from_dict(cleaner.positions, orient='index')
+            print(f"{len(cleaner.spairs)} positions open")
+            print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
         # plot_all_screened(spairs, data)
         # for pair in spairs:
             # print(pair, ": ", data[pair]["atr_grid"])
@@ -591,10 +593,21 @@ def main():
         spairs = list(sdf.symbol)
 
         cleaner = Cleaner(client, spairs)
+        while len(cleaner.spairs) > 0:
+            time.sleep(10)
+            positions_df =pd.DataFrame.from_dict(cleaner.positions, orient='index')
+            print(f"{len(cleaner.spairs)} positions open")
+            print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
         # plot_all_screened(spairs, data)
         # for pair in spairs:
             # print(pair, ": ", data[pair]["atr_grid"])
         print(sdata)
         # print("positions: ", positions)
     else:
-        print("Nothing found :( ")    
+        print("Nothing found :( ")  
+
+
+if __name__ == "__main__":
+    while True:
+        main()
+        
