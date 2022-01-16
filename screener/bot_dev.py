@@ -115,7 +115,7 @@ class Cleaner(Thread):
     def run(self):
         while len(self.spairs) > 0:
             check_positions(self.client, self.spairs, self.positions)
-            time.sleep(10)
+            time.sleep(1)
         
 
 class RingBuffer:
@@ -444,7 +444,9 @@ def check_positions(client, spairs, positions):
         position = client.futures_position_information(symbol=symbol)
         positions[symbol] = position[0]
         entry_price = float(position[0]["entryPrice"])
-        position_qty = abs(float(position[0]["positionAmt"]))
+        position_qty = float(position[0]["positionAmt"])
+        side = -1 if position_qty < 0 else 1
+        position_qty = abs(position_qty)
         # print(json.dumps(position[0], indent=2))
         
         if entry_price == 0.0 and position_qty == 0.0: 
@@ -455,7 +457,8 @@ def check_positions(client, spairs, positions):
             spairs.remove(symbol)
             # positions.remove(symbol)
             del positions[symbol]
-
+        else:
+            send_tpsl(client, symbol, tp, None, side, protect=False)
 
 def plot_single_atr_grid(df, atr, atr_grid, close_ema, hist):
     
@@ -568,11 +571,12 @@ def main():
         spairs = list(sdf.symbol)
 
         cleaner = Cleaner(client, spairs)
-        while len(cleaner.spairs) > 0:
+        while len(cleaner.spairs) > 1:
             time.sleep(10)
             positions_df =pd.DataFrame.from_dict(cleaner.positions, orient='index')
             print(f"{len(cleaner.spairs)} positions open")
             print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
+        
         # plot_all_screened(spairs, data)
         # for pair in spairs:
             # print(pair, ": ", data[pair]["atr_grid"])

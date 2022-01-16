@@ -233,3 +233,85 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
                     print(f"stop loss order, ", error)
 
 #%%
+def send_tpsl(client, symbol, tp, sl, side, protect=False):
+
+
+    if side == -1:
+        side = "SELL"
+        counterside = "BUY"
+    elif side == 1:
+        side = "BUY"
+        counterside = "SELL"
+    
+    filters = get_filters()
+    symbolFilters = filters[symbol]
+    
+    position = client.futures_position_information(symbol=symbol)
+
+    entry_price = float(position[0]["entryPrice"])
+    mark_price = float(position[0]["markPrice"])
+    # position_qty = abs(float(position[0]["positionAmt"]))
+    
+    base_price = mark_price
+    price_precision, qty_precision, min_qty, order_size, step_size = apply_symbol_filters(symbolFilters, base_price, qty=1.1)
+    
+    qty_formatter = lambda ordersize, qty_precision: f"{float(ordersize):.{qty_precision}f}"
+    # price_formatter = lambda price, price_precision: f"{float(price):.{price_precision}f}"
+    price_formatter = lambda price, price_precision: f"{float(price):.{price_precision}f}"
+    formatted_order_size = qty_formatter(order_size, qty_precision)
+    
+
+
+    
+    
+    # print(json.dumps(position[0], indent=2))
+
+        
+    exit_price = compute_exit(entry_price, tp, side=side)
+
+    formatted_tp_price = price_formatter(
+        exit_price,
+        price_precision,
+    )
+
+    print(
+        f"""price: {entry_price}
+            tp_price: {formatted_tp_price}
+            """
+    )
+    try:
+        tp_order_mkt = client.futures_create_order(
+            symbol=symbol,
+            side=counterside,
+            type="TAKE_PROFIT_MARKET",
+            stopPrice=formatted_tp_price,
+            closePosition=True, 
+            workingType="CONTRACT_PRICE",
+            priceProtect=False,
+            timeInForce="GTC",
+        )    
+    except BinanceAPIException as error:
+        print(f"take profit order, ", error)
+    finally:
+        if sl is not None:
+
+            exit_price = compute_exit(entry_price, sl, side=counterside)
+
+            formatted_sl_price = price_formatter(
+                exit_price,
+                price_precision,
+            )
+            print(formatted_sl_price)
+            try:
+                sl_order_mkt = client.futures_create_order(
+                    symbol=symbol,
+                    side=counterside,
+                    type="STOP_MARKET",
+                    stopPrice=formatted_sl_price,
+                    closePosition=True, 
+                    workingType="CONTRACT_PRICE",
+                    priceProtect=False,
+                    timeInForce="GTC",
+                )    
+            except BinanceAPIException as error:
+                print(f"stop loss order, ", error)
