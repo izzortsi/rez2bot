@@ -3,6 +3,7 @@
 from binance.client import Client
 from binance.enums import *
 from binance.exceptions import *
+from binance.helpers import round_step_size
 import json
 import os
 import numpy as np
@@ -69,7 +70,7 @@ def compute_exit(entry_price, target_profit, side, entry_fee=0.04, exit_fee=0.04
 
 
 
-def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=1.1, sl=None, protect=False, is_positioned=False):
+def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1, sl=None, protect=False, is_positioned=False):
     # print(inf_grid)
     
     grid_entries = [band.values[-1] for band in inf_grid] if side == 1 else [band.values[-1] for band in sup_grid]
@@ -90,8 +91,8 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=1.1, sl=No
     price_precision, qty_precision, min_qty, order_size, step_size = apply_symbol_filters(symbolFilters, base_price, qty=qty)
     
     qty_formatter = lambda ordersize, qty_precision: f"{float(ordersize):.{qty_precision}f}"
+    # price_formatter = lambda price, price_precision: f"{float(price):.{price_precision}f}"
     price_formatter = lambda price, price_precision: f"{float(price):.{price_precision}f}"
-    
     formatted_order_size = qty_formatter(order_size, qty_precision)
     
 
@@ -137,10 +138,13 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=1.1, sl=No
                 band_diff = abs(entry - entry_price) 
             else:
                 band_diff = abs(entry - grid_entries[i-1]) 
-            price_step = max(band_diff, 1.1*step_size*(entry+entry_price)/2)
-            entry = min(entry, mark_price+price_step)
+            # price_step = max(band_diff, 1.1*step_size*(entry+entry_price)/2)
+            # entry = max(entry, mark_price+price_step)
+            entry = round_step_size(entry, step_size)
+            print(entry)
             formatted_grid_entry_price = price_formatter(entry, price_precision)
-
+            formatted_order_size = qty_formatter(order_size*coefs[i], qty_precision)
+            print(formatted_grid_entry_price)
             try:
                 grid_order = client.futures_create_order(
                 symbol=symbol,
@@ -157,9 +161,14 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=1.1, sl=No
                 grid_orders.append(grid_order)
             except BinanceAPIException as error:
                 print(f"grid order {i}, ", error)
+        
+        exit_price = round_step_size(
+                        compute_exit(entry_price, tp, side=side), 
+                        step_size
+                        )
 
         formatted_tp_price = price_formatter(
-            compute_exit(entry_price, tp, side=side),
+            exit_price,
             price_precision,
         )
 
@@ -197,8 +206,12 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=1.1, sl=No
             print(f"take profit order, ", error)
         finally:
             if sl is not None:
+                exit_price = round_step_size(
+                    compute_exit(grid_entries[-1], sl, side=counterside), 
+                    step_size
+                )
                 formatted_sl_price = price_formatter(
-                    compute_exit(entry_price, sl, side=counterside),
+                    exit_price,
                     price_precision,
                 )
                 print(formatted_sl_price)

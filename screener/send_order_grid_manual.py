@@ -116,8 +116,8 @@ def send_order_grid(client, symbol, tp, side, ge, gs=0.16, protect=False, sl=Non
     print("grid_width", grid_width)
     price_step = grid_width*gs
     print("grid_width*gs", price_step)
-    print("stepsize*markprice", 1.1*step_size*mark_price)
-    # price_step = max(price_step, 1.1*step_size*mark_price)
+    print("stepsize*markprice", 1.2*step_size*mark_price)
+    price_step = max(price_step, 1.2*step_size*mark_price)
     print("price_step: ", price_step)
     make_grid = lambda ep, w, s, side: np.arange(start=ep, stop=ep+w, step=s) if side == "SELL" else np.arange(start=ep, stop=ep-w, step=-s)
     grid_entries = make_grid(entry_price, grid_width, price_step, side)

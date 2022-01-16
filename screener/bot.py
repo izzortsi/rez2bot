@@ -103,6 +103,19 @@ def process_futures_klines(klines):
     klines.update(klines.iloc[:, 2:].astype(float))
     return klines
 
+class Cleaner(Thread):
+    def __init__(self, client, spairs):
+        Thread.__init__(self)
+        self.setDaemon(True)
+        self.client = client
+        self.spairs = spairs
+        self.start()
+
+    def run(self):
+        while len(self.spairs) > 0:
+            check_positions(self.client, self.spairs)
+            time.sleep(10)
+        
 
 class RingBuffer:
     def __init__(self, window_length, granularity, data_window):
@@ -358,7 +371,7 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
                 #     send_arithmetic_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=qty, protect=False, sl=sl, ag=True, is_positioned=False)
                 # else:
                 #     send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=qty, protect=False, sl=sl, is_positioned=False)
-                send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=qty, protect=False, sl=sl, is_positioned=False)
+                send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=qty, protect=False, sl=sl, is_positioned=False)
                 if plot_screened:
                     plot_symboL_atr_grid(symbol, data)
                 
@@ -420,6 +433,22 @@ def screen():
     signals, rows, data, positions, shown_data = generate_market_signals(filtered_perps, coefs, interval, update_positions=True)
     return signals, rows, data, positions, shown_data
 
+def check_positions(client, spairs):
+    for symbol in spairs:
+        
+        is_closed = False
+        
+        position = client.futures_position_information(symbol=symbol)
+        entry_price = float(position[0]["entryPrice"])
+        position_qty = abs(float(position[0]["positionAmt"]))
+        # print(json.dumps(position[0], indent=2))
+        
+        if entry_price == 0.0 and position_qty == 0.0: 
+            is_closed = True
+        
+        if is_closed == True:
+            client.futures_cancel_all_open_orders(symbol=symbol)
+            spairs.remove(symbol)
 
 
 def plot_single_atr_grid(df, atr, atr_grid, close_ema, hist):
@@ -530,6 +559,8 @@ if __name__ == "__main__":
         sdata = pd.concat(shown_data, axis=0)
         sdf = pd.concat(rows, axis=1).transpose()
         spairs = list(sdf.symbol)
+
+        cleaner = Cleaner(client, spairs)
         # plot_all_screened(spairs, data)
         # for pair in spairs:
             # print(pair, ": ", data[pair]["atr_grid"])
@@ -538,3 +569,5 @@ if __name__ == "__main__":
     else:
         print("Nothing found :( ")
 #%%
+
+

@@ -358,7 +358,7 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
                 #     send_arithmetic_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=qty, protect=False, sl=sl, ag=True, is_positioned=False)
                 # else:
                 #     send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=qty, protect=False, sl=sl, is_positioned=False)
-                send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=qty, protect=False, sl=sl, is_positioned=False)
+                send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=qty, protect=False, sl=sl, is_positioned=False)
                 if plot_screened:
                     plot_symboL_atr_grid(symbol, data)
                 
