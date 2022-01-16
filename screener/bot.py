@@ -109,6 +109,7 @@ class Cleaner(Thread):
         self.setDaemon(True)
         self.client = client
         self.spairs = spairs
+        self.positions = {}
         self.start()
 
     def run(self):
@@ -433,12 +434,13 @@ def screen():
     signals, rows, data, positions, shown_data = generate_market_signals(filtered_perps, coefs, interval, update_positions=True)
     return signals, rows, data, positions, shown_data
 
-def check_positions(client, spairs):
+def check_positions(client, spairs, positions):
     for symbol in spairs:
         
         is_closed = False
         
         position = client.futures_position_information(symbol=symbol)
+        positions[symbol] = position[0]
         entry_price = float(position[0]["entryPrice"])
         position_qty = abs(float(position[0]["positionAmt"]))
         # print(json.dumps(position[0], indent=2))
@@ -449,6 +451,8 @@ def check_positions(client, spairs):
         if is_closed == True:
             client.futures_cancel_all_open_orders(symbol=symbol)
             spairs.remove(symbol)
+            # positions.remove(symbol)
+            del positions[symbol]
 
 
 def plot_single_atr_grid(df, atr, atr_grid, close_ema, hist):
@@ -561,6 +565,9 @@ if __name__ == "__main__":
         spairs = list(sdf.symbol)
 
         cleaner = Cleaner(client, spairs)
+        while len(cleaner.spairs) > 0:
+            time.sleep(30)
+            print()
         # plot_all_screened(spairs, data)
         # for pair in spairs:
             # print(pair, ": ", data[pair]["atr_grid"])
@@ -571,3 +578,23 @@ if __name__ == "__main__":
 #%%
 
 
+def main():
+
+    filtered_perps = prescreen()
+    print(filtered_perps)
+    
+    signals, rows, data, positions, cpnl, shown_data = postscreen(filtered_perps, paper=pt, update_positions=True)
+    
+    if len(rows) > 0:
+        sdata = pd.concat(shown_data, axis=0)
+        sdf = pd.concat(rows, axis=1).transpose()
+        spairs = list(sdf.symbol)
+
+        cleaner = Cleaner(client, spairs)
+        # plot_all_screened(spairs, data)
+        # for pair in spairs:
+            # print(pair, ": ", data[pair]["atr_grid"])
+        print(sdata)
+        # print("positions: ", positions)
+    else:
+        print("Nothing found :( ")    
