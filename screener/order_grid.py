@@ -86,7 +86,7 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
     filters = get_filters()
     symbolFilters = filters[symbol]
     # inf_grid
-    
+    error_code = None
     # print(inf_grid[:, -1])
     base_price = inf_grid[0].values[-1]
     price_precision, qty_precision, min_qty, order_size, step_size = apply_symbol_filters(symbolFilters, base_price, qty=qty)
@@ -170,7 +170,14 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
                 )
                 grid_orders["grid"].append(grid_order)
             except BinanceAPIException as error:
+
                 print(f"grid order {i}, ", error)
+
+                if (
+                    error.code == -2019
+                    or error.code == -4164
+                    ):
+                    error_code = error.code
         
         exit_price = round_step_size(
                         compute_exit(entry_price, tp, side=side), 
@@ -240,7 +247,10 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
                     grid_orders["sl"] = sl_order_mkt    
                 except BinanceAPIException as error:
                     print(f"stop loss order, ", error)
-        return grid_orders
+        if error_code is not None:
+            return error_code
+        else:
+            return grid_orders
 
 #%%
 def send_tpsl(client, symbol, tp, sl, side, protect=False):
