@@ -125,7 +125,7 @@ class Cleaner(Thread):
     def run(self):
         while (len(self.spairs) > 0 and self.running):
             check_positions(self.client, self.spairs, self.positions, self.order_grids)
-            time.sleep(40)
+            time.sleep(60)
     def stop(self):
         self.running = False
         
@@ -483,7 +483,7 @@ def main():
         #         print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
     
         while len(cleaner.spairs) >= 1:
-            time.sleep(40)
+            time.sleep(60)
             positions_df =pd.DataFrame.from_dict(cleaner.positions, orient='index')
             print(f"{len(cleaner.spairs)} positions open")
             print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
