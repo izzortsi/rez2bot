@@ -82,7 +82,7 @@ sl = args.stop_loss
 leverage = args.leverage
 qty = args.quantity
 # ignore_list = ["MATICUSDT"]
-ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT"]
+ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT"]
 
 def to_datetime_tz(arg, timedelta=-pd.Timedelta("03:00:00"), unit="ms", **kwargs):
     """
@@ -125,13 +125,19 @@ class Cleaner(Thread):
     def run(self):
         while (len(self.spairs) > 0 and self.running):
             check_positions(self.client, self.spairs, self.positions, self.order_grids)
-            time.sleep(60)
+            time.sleep(30)
     def stop(self):
         self.running = False
         
 def check_positions(client, spairs, positions, order_grids):
     for symbol in spairs:
-        
+        try:
+            last_entry_price = float(positions[symbol]["entryPrice"])
+        except KeyError as e:
+            print(e)
+            last_entry_price = None
+        # last_position_amount = float(positions[symbol]["positionAmt"])
+
         is_closed = False
         symbol_grid = order_grids[symbol]
         position = client.futures_position_information(symbol=symbol)
@@ -143,25 +149,32 @@ def check_positions(client, spairs, positions, order_grids):
         # print(json.dumps(position[0], indent=2))
         
         if entry_price == 0.0 and position_qty == 0.0: 
-            is_closed = True
 
-        if is_closed == True:
+            is_closed = True
+        
             try:
                 client.futures_cancel_all_open_orders(symbol=symbol)
             except BinanceAPIException as e:
-                print(e)                
-            spairs.remove(symbol)
-            del positions[symbol]
+                print(e)
+            else:                
+                spairs.remove(symbol)
+                del positions[symbol]
             # positions.remove(symbol)
-        else:
+        elif entry_price != last_entry_price:
+            print(f"""entry price: {entry_price};
+                    last entry price: {last_entry_price}
+                    difference: {abs(entry_price - last_entry_price) if last_entry_price is not None else None}""")
             print(f"changed tp and sl for {symbol}'s position")
             tp_id = symbol_grid["tp"]["orderId"]
             try:
                 client.futures_cancel_order(symbol=symbol, orderId=tp_id)
             except BinanceAPIException as e:
                 print(e)
-            new_tp, new_sl = send_tpsl(client, symbol, tp, None, side, protect=False)
-            symbol_grid["tp"]["orderId"] = new_tp["orderId"]
+                if e.code == -2011:
+                    new_tp, new_sl = send_tpsl(client, symbol, tp, None, side, protect=False)    
+            else:
+                new_tp, new_sl = send_tpsl(client, symbol, tp, None, side, protect=False)
+                symbol_grid["tp"]["orderId"] = new_tp["orderId"]
 
 
 def compute_indicators(klines, coefs=np.array([1.0, 1.364, 1.618, 1.854, 2.0, 2.364, 2.618]), w1=12, w2=26, w3=8, w_atr=8, step=0.0):
@@ -175,12 +188,7 @@ def compute_indicators(klines, coefs=np.array([1.0, 1.364, 1.618, 1.854, 2.0, 2.
     # compute atr bands
 
     atr = ta.atr(klines["high"], klines["low"], klines["close"], length=w_atr)
-    # sup_grid_coefs = np.array([0.618, 1.0, 1.618, 2.0, 2.618])
-    # sup_grid_coefs = np.array([0.618, 0.708, 0.764, 0.854, 1.0, 1.236, 1.326, 1.382, 1.472, 1.618, 2.0, 2.326, 2.472, 2.618])
-    # sup_grid_coefs = np.array([1.0, 1.364, 1.618, 2.0, 2.364, 2.618])
-    # sup_grid_coefs = np.array([1.364, 1.618, 2.0, 2.364, 2.618])
-    # sup_grid_coefs = np.array([1.0, 1.618, 2.0, 2.618])
-    # sup_grid_coefs = np.array([0.854, 1, 1.618, 2.0, 2.618])
+
     sup_grid_coefs = coefs
     inf_grid_coefs = -1.0 * coefs
 
@@ -291,48 +299,27 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
         symbol = row.symbol
         if symbol in ignore_list:
             continue
-        # print(symbol)
-        # print(type(symbol))
+
         klines = client.futures_klines(symbol=symbol, interval=interval, limit=limit)
         klines = process_futures_klines(klines)
-        # print(f"len klines: {len(klines)}")
         data_window = klines.tail(window_length)
-        # data_window.index = range(window_length)
-        # print(f"len dw: {len(data_window)}")
         data_window.index = range(len(data_window))
-        # data_window
-
-        # buffer = RingBuffer(window_length, interval, data_window)
-        # df = buffer.data_window
         dw = data_window
-        #w_atr = 5
         hist, atr, inf_grid, sup_grid, close_ema, atr_grid, local_volatility, global_volatility = compute_indicators(
             dw, coefs, w1=12, w2=26, w3=8, w_atr=w_atr, step=gs
         )
 
         signal, bands = generate_signal(dw, coefs, hist, inf_grid, sup_grid)
         intensity = sum(bands)/sum(coefs)
-        
-        
-        # print("positions:", positions[symbol])
 
-        
-        
         if debug:
             print(f"Screening {symbol}...")
-            # print(f"price position: {(float(dw.iloc[-1].close)-float(dw.iloc[-1].lowPrice))/(float(dw.iloc[-1].highPrice)-float(dw.iloc[-1].lowPrice))}")
-            # print(f"daily volatility: {(float(dw.iloc[-1].highPrice)/float(dw.iloc[-1].lowPrice) - 1)*100}")
-            # print(f"price change: {float(dw.iloc[-1].priceChangePercent)}")
+
             print(f"bands: {bands}")
             print(f"signal: {signal}")
             # print(f"intensity: {intensity}")
             print(f"close_ema: {close_ema.iloc[-1]}")
-            # print(f"atr: {atr.iloc[-1]}")
-            # print(f"inf_grid: {inf_grid.iloc[-1]}")
-            # print(f"sup_grid: {sup_grid.iloc[-1]}")
-            # print(f"local_volatility: {local_volatility}")
-            # print(f"global_volatility: {global_volatility}")
-            # print(f"hist: {hist.iloc[-1]}")
+
             print(f"atr_grid: {atr_grid.iloc[-1]}")
             print(f"\n")
 
@@ -486,7 +473,8 @@ def main():
             time.sleep(60)
             positions_df =pd.DataFrame.from_dict(cleaner.positions, orient='index')
             print(f"{len(cleaner.spairs)} positions open")
-            print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
+            if len(cleaner.spairs) > 0:
+                print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
         # printer = Thread(target=print_positions, args=(cleaner,))
         # printer.setDaemon(daemonic=True)
         # printer.start()
