@@ -36,9 +36,10 @@ parser.add_argument("-wa", "--atr_window_length", type=int, default=8)
 parser.add_argument("-e", nargs="+", help="my help message", type=float,
                         default=(1.0, 1.364, 1.5, 1.618, 1.854, 2.0, 2.364))
 parser.add_argument("--debug", type=bool, default=False)
+# parser.add_argument("--no_orders", type=bool, default=False)
 parser.add_argument("--momentum", type=bool, default=False)
 parser.add_argument("--open_grids", type=bool, default=False)
-
+parser.add_argument("--check_positions_properties", type=bool, default=False)
 parser.add_argument("-ag", "--arithmetic_grid", type=bool, default=False)
 parser.add_argument("-gs", "--grid_step", type=float, default=0.0)
 parser.add_argument("--plot_screened", type=bool, default=False)
@@ -47,6 +48,7 @@ parser.add_argument("-tp", "--take_profit", type=float, default=0.33)
 parser.add_argument("-sl", "--stop_loss", type=float, default=0.33)                
 parser.add_argument("-q", "--quantity", type=float, default=1.1)
 parser.add_argument("-lev", "--leverage", type=int, default=17)                
+
 
 args = parser.parse_args()
 
@@ -73,13 +75,14 @@ open_grids = args.open_grids
 arithmetic_grid = args.arithmetic_grid
 gs = args.grid_step
 plot_screened= args.plot_screened
+check_positions_properties = args.check_positions_properties
 
 tp = args.take_profit
 sl = args.stop_loss
 leverage = args.leverage
 qty = args.quantity
-
-
+# ignore_list = ["MATICUSDT"]
+ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT"]
 
 def to_datetime_tz(arg, timedelta=-pd.Timedelta("03:00:00"), unit="ms", **kwargs):
     """
@@ -109,19 +112,22 @@ def process_futures_klines(klines):
     return klines
 
 class Cleaner(Thread):
-    def __init__(self, client, spairs, order_grids):
+    def __init__(self, client, order_grids):
         Thread.__init__(self)
         self.setDaemon(True)
         self.client = client
-        self.spairs = spairs
+        self.spairs = list(order_grids.keys())
         self.positions = {}
         self.order_grids = order_grids
+        self.running = True
         self.start()
 
     def run(self):
-        while len(self.spairs) > 0:
+        while (len(self.spairs) > 0 and self.running):
             check_positions(self.client, self.spairs, self.positions, self.order_grids)
-            time.sleep(5)
+            time.sleep(20)
+    def stop(self):
+        self.running = False
         
 def check_positions(client, spairs, positions, order_grids):
     for symbol in spairs:
@@ -138,17 +144,24 @@ def check_positions(client, spairs, positions, order_grids):
         
         if entry_price == 0.0 and position_qty == 0.0: 
             is_closed = True
-        
+
         if is_closed == True:
-            client.futures_cancel_all_open_orders(symbol=symbol)
+            try:
+                client.futures_cancel_all_open_orders(symbol=symbol)
+            except BinanceAPIException as e:
+                print(e)                
             spairs.remove(symbol)
-            # positions.remove(symbol)
             del positions[symbol]
+            # positions.remove(symbol)
         else:
             print(f"changed tp and sl for {symbol}'s position")
             tp_id = symbol_grid["tp"]["orderId"]
-            client.futures_cancel_order(symbol=symbol, orderId=tp_id)
-            send_tpsl(client, symbol, tp, None, side, protect=False)
+            try:
+                client.futures_cancel_order(symbol=symbol, orderId=tp_id)
+            except BinanceAPIException as e:
+                print(e)
+            new_tp, new_sl = send_tpsl(client, symbol, tp, None, side, protect=False)
+            symbol_grid["tp"]["orderId"] = new_tp["orderId"]
 
 
 def compute_indicators(klines, coefs=np.array([1.0, 1.364, 1.618, 1.854, 2.0, 2.364, 2.618]), w1=12, w2=26, w3=8, w_atr=8, step=0.0):
@@ -274,7 +287,10 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
     order_grids = {}
     # for symbol in symbols.symbol:
     for index, row in symbols.iterrows():
+
         symbol = row.symbol
+        if symbol in ignore_list:
+            continue
         # print(symbol)
         # print(type(symbol))
         klines = client.futures_klines(symbol=symbol, interval=interval, limit=limit)
@@ -372,8 +388,10 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
                 # else:
                 #     send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=qty, protect=False, sl=sl, is_positioned=False)
                 res = send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=qty, protect=False, sl=sl, is_positioned=False)
-                if res == "stop":
-                    break
+                if res == -2019:
+                    break        
+                elif res == -4164:
+                    continue
                 else:
                     print(res["tp"])
                     order_grids[symbol] = res
@@ -439,12 +457,14 @@ def screen():
     return signals, rows, data, positions, shown_data, order_grids
 
 def main():
-    try:
-        change_leverage_and_margin(leverage=leverage)
-    except Exception as e:
-        print(e)
+     
+    if check_positions_properties:
+        try:
+            change_leverage_and_margin(leverage=leverage)
+        except Exception as e:
+            print(e)
     filtered_perps = prescreen()
-    print(filtered_perps)
+    # print(filtered_perps)
     
     signals, rows, data, positions, cpnl, shown_data, order_grids = postscreen(filtered_perps, paper=pt, update_positions=True)
     
@@ -453,27 +473,46 @@ def main():
         sdf = pd.concat(rows, axis=1).transpose()
         spairs = list(sdf.symbol)
 
-        cleaner = Cleaner(client, spairs)
+        cleaner = Cleaner(client, order_grids)
+        
+        # def print_positions(cleaner):
+        #     while len(cleaner.spairs) >= 1:
+        #         time.sleep(2)
+        #         positions_df =pd.DataFrame.from_dict(cleaner.positions, orient='index')
+        #         print(f"{len(cleaner.spairs)} positions open")
+        #         print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
+    
         while len(cleaner.spairs) >= 1:
-            time.sleep(10)
+            time.sleep(20)
             positions_df =pd.DataFrame.from_dict(cleaner.positions, orient='index')
             print(f"{len(cleaner.spairs)} positions open")
             print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
-        
+        # printer = Thread(target=print_positions, args=(cleaner,))
+        # printer.setDaemon(daemonic=True)
+        # printer.start()
         # plot_all_screened(spairs, data)
         # for pair in spairs:
             # print(pair, ": ", data[pair]["atr_grid"])
+        # printer.join()
+        # print_positions(cleaner)
+        
         print("""
         All positions closed.
         Cleaning stuff..."""
         )
+        return cleaner
         # print("positions: ", positions)
     else:
         print("Nothing found :( ")  
 
+
 if __name__ == "__main__":
     while True:
-        main()
+        ret = main()
+ 
         time.sleep(20)
+        if ret is not None:
+            cleaner = ret
+            cleaner.stop()       
         print("Reescreening...")
 

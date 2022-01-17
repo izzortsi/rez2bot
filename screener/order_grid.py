@@ -39,7 +39,7 @@ def process_all_stats(all_stats):
     perps = [pd.DataFrame.from_records([symbol_data]) for symbol_data in all_stats]
     return perps
 
-def apply_symbol_filters(filters, base_price, qty=1.1):
+def apply_symbol_filters(filters, base_price, qty=1.2):
     price_precision = int(filters["pricePrecision"])    
     qty_precision = int(filters["quantityPrecision"])
     min_qty = float(filters["minQty"])
@@ -88,7 +88,7 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
     # inf_grid
     
     # print(inf_grid[:, -1])
-    base_price = grid_entries[0]
+    base_price = inf_grid[0].values[-1]
     price_precision, qty_precision, min_qty, order_size, step_size = apply_symbol_filters(symbolFilters, base_price, qty=qty)
     
     qty_formatter = lambda ordersize, qty_precision: f"{float(ordersize):.{qty_precision}f}"
@@ -112,8 +112,11 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
     except BinanceAPIException as error:
         
         print("positioning, ", error)    
-        if error.code == -2019:
-            return "stop"
+        if (
+            error.code == -2019
+            or error.code == -4164
+            ):
+            return error.code
     else:
         position = client.futures_position_information(symbol=symbol)
         entry_price = float(position[0]["entryPrice"])
@@ -134,7 +137,7 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
         
         
         print(f"""
-        ge = {grid_entries}
+        grid_entries = {dict({f'band_{i}': grid_entry for i, grid_entry in enumerate(grid_entries)})}
         """)
         # gw = {grid_width}
         # ps = {price_step}
@@ -147,8 +150,9 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
             # price_step = max(band_diff, 1.1*step_size*(entry+entry_price)/2)
             # entry = max(entry, mark_price+price_step)
             entry = round_step_size(entry, step_size)
-            print(entry)
+            # print(entry)
             formatted_grid_entry_price = price_formatter(entry, price_precision)
+            # formatted_order_size = qty_formatter(np.round(order_size*coefs[i], decimals=qty_precision), qty_precision)
             formatted_order_size = qty_formatter(order_size*coefs[i], qty_precision)
             print(formatted_grid_entry_price)
             try:
@@ -321,3 +325,6 @@ def send_tpsl(client, symbol, tp, sl, side, protect=False):
                 )    
             except BinanceAPIException as error:
                 print(f"stop loss order, ", error)
+            else:
+                return tp_order_mkt, sl_order_mkt
+        return tp_order_mkt, None
