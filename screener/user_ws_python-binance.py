@@ -23,7 +23,7 @@ def user_ws_callback(msg):
         # position_amount = order_data["p"]
         if (order_status == 'PARTIALLY_FILLED'
             or order_status == 'FILLED'):
-            print(symbol, order_status)
+            print(symbol, order_data)
     elif msg["e"] == "ACCOUNT_UPDATE":
         if msg["a"]["m"] == "ORDER":
             msg_data = msg["a"]
@@ -38,11 +38,14 @@ def user_ws_callback(msg):
         # symbol = order_data["S"]
 
 # %%
+def main():
+    twm = ThreadedWebsocketManager(api_key=api_key, api_secret=api_secret)
+    twm.start()
 
-twm = ThreadedWebsocketManager(api_key=api_key, api_secret=api_secret)
-twm.start()
-
-# twm.start_futures_socket(callback=lambda msg: print("twm's got a message:", msg))
-twm.start_futures_socket(callback=user_ws_callback)
+    # twm.start_futures_socket(callback=lambda msg: print("twm's got a message:", msg))
+    twm.start_futures_socket(callback=user_ws_callback)
+    twm.join()
 
 #%%
+if __name__ == "__main__":
+    main()
