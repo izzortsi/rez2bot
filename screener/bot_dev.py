@@ -82,7 +82,7 @@ sl = args.stop_loss
 leverage = args.leverage
 qty = args.quantity
 # ignore_list = ["MATICUSDT"]
-ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT"]
+ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT"]
 
 def to_datetime_tz(arg, timedelta=-pd.Timedelta("03:00:00"), unit="ms", **kwargs):
     """
@@ -125,7 +125,7 @@ class Cleaner(Thread):
     def run(self):
         while (len(self.spairs) > 0 and self.running):
             check_positions(self.client, self.spairs, self.positions, self.order_grids)
-            time.sleep(30)
+            time.sleep(10)
     def stop(self):
         self.running = False
         
@@ -166,15 +166,20 @@ def check_positions(client, spairs, positions, order_grids):
                     difference: {abs(entry_price - last_entry_price) if last_entry_price is not None else None}""")
             print(f"changed tp and sl for {symbol}'s position")
             tp_id = symbol_grid["tp"]["orderId"]
+            # sl_id = symbol_grid["sl"]["orderId"]
             try:
                 client.futures_cancel_order(symbol=symbol, orderId=tp_id)
+                # client.futures_cancel_order(symbol=symbol, orderId=sl_id)
             except BinanceAPIException as e:
                 print(e)
                 if e.code == -2011:
-                    new_tp, new_sl = send_tpsl(client, symbol, tp, None, side, protect=False)    
+                    new_tp, new_sl = send_tpsl(client, symbol, tp, None, side, protect=False)
+                    # new_tp, new_sl = send_tpsl(client, symbol, tp, sl, side, protect=False)
             else:
                 new_tp, new_sl = send_tpsl(client, symbol, tp, None, side, protect=False)
+                # new_tp, new_sl = send_tpsl(client, symbol, tp, sl, side, protect=False)
                 symbol_grid["tp"]["orderId"] = new_tp["orderId"]
+                # symbol_grid["sl"]["orderId"] = new_sl["orderId"]
 
 
 def compute_indicators(klines, coefs=np.array([1.0, 1.364, 1.618, 1.854, 2.0, 2.364, 2.618]), w1=12, w2=26, w3=8, w_atr=8, step=0.0):
@@ -431,9 +436,9 @@ def postscreen(filtered_perps, paper=False, positions={}, cpnl={}, update_positi
     signals, rows, data, positions, cpnl, shown_data, order_grids = generate_market_signals(filtered_perps, coefs, interval, limit=99, paper=paper, positions = positions, cpnl=cpnl, update_positions=update_positions)    
     return signals, rows, data, positions, cpnl, shown_data, order_grids
 
-def updatescreen(filtered_perps, positions, cpnl):
-    signals, rows, data, positions, cpnl, shown_data, order_grids = generate_market_signals(filtered_perps, coefs, interval, limit=99, paper=True, positions = positions, cpnl=cpnl, update_positions=False)    
-    return signals, rows, data, positions, cpnl, shown_data, order_grids
+# def updatescreen(filtered_perps, positions, cpnl):
+#     signals, rows, data, positions, cpnl, shown_data, order_grids = generate_market_signals(filtered_perps, coefs, interval, limit=99, paper=True, positions = positions, cpnl=cpnl, update_positions=False)    
+#     return signals, rows, data, positions, cpnl, shown_data, order_grids
 
 def screen():
     all_stats = client.futures_ticker()
@@ -470,7 +475,7 @@ def main():
         #         print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
     
         while len(cleaner.spairs) >= 1:
-            time.sleep(60)
+            time.sleep(30)
             positions_df =pd.DataFrame.from_dict(cleaner.positions, orient='index')
             print(f"{len(cleaner.spairs)} positions open")
             if len(cleaner.spairs) > 0:
