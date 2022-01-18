@@ -35,7 +35,7 @@ parser.add_argument("-wl", "--window_length", type=int, default=52)
 parser.add_argument("-wa", "--atr_window_length", type=int, default=8)
 parser.add_argument("-e", nargs="+", help="my help message", type=float,
                         # default=(1.0, 1.364, 1.5, 1.618, 1.854, 2.0, 2.364))
-                        default=(1.146, 1.364, 1.5, 1.618, 1.854, 2.0, 2.364, 2.5, 2.618))
+                        default=(1.0, 1.146, 1.364, 1.5, 1.618, 1.854, 2.0, 2.364, 2.5))
 parser.add_argument("--max_positions", type=int, default=150)
 parser.add_argument("--debug", type=bool, default=False)
 # parser.add_argument("--no_orders", type=bool, default=False)
@@ -87,7 +87,7 @@ sl = args.stop_loss
 leverage = args.leverage
 qty = args.quantity
 # ignore_list = ["MATICUSDT"]
-ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT", "AXSUSDT", "XEMUSDT"]
+ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT"]
 
 def to_datetime_tz(arg, timedelta=-pd.Timedelta("03:00:00"), unit="ms", **kwargs):
     """
