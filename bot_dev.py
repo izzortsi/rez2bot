@@ -37,7 +37,7 @@ parser.add_argument("-e", nargs="+", help="my help message", type=float,
                         # default=(1.0, 1.146, 1.364, 1.5, 1.618, 1.854, 2.0, 2.364, 2.5, 2.618)) #15min
                         default=(0.92, 1.16, 1.4, 1.64, 1.88, 2.12, 2.36, 2.6)) # 15m (maybe 5min)
                         # default=(0.86, 1.0, 1.146, 1.292, 1.364, 1.5, 1.618, 1.792, 1.854, 2.0)) # 1h (maybe 5min)
-parser.add_argument("--max_positions", type=int, default=8)
+parser.add_argument("--max_positions", type=int, default=3)
 parser.add_argument("--debug", type=bool, default=False)
 parser.add_argument("--momentum", type=bool, default=False)
 parser.add_argument("--open_grids", type=bool, default=False)
@@ -352,14 +352,14 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
 
             print(
             f"""
-            #######################################
+            ################################################################################
             # {symbol}:
             #   signal: {signal}
             #   bands: {bands}
             #   volatility: {(local_volatility + global_volatility)/2}
             #   local volatiliy: {local_volatility}
             #   global volatiliy: {global_volatility} 
-            #######################################
+            #################################################################################
             """
             )
 
@@ -396,13 +396,14 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
                 elif (res == -2019 and
                     grid_orders is not None): #margin not enough to fill the grid
 
-                    print(grid_orders["tp"])
+                    print("gridorderstest:", grid_orders["tp"])
                     n_positions += 1
                     order_grids[symbol] = grid_orders
                     break       
 
                 elif res == -4164: #APIError(code=-4164): Order's notional must be no smaller than 5.0 (unless you choose reduce only)
                     order_grids[symbol] = grid_orders
+                    n_positions += 1
                     continue
                 else:
                     print(grid_orders["tp"])
@@ -496,7 +497,7 @@ def main():
         #         print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
     
         while len(cleaner.spairs) >= 1:
-            time.sleep(4*max_positions)
+            time.sleep(3)
             positions_df =pd.DataFrame.from_dict(cleaner.positions, orient='index')
             print(f"{len(cleaner.spairs)} positions open")
             if len(cleaner.spairs) > 0:
