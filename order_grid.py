@@ -34,7 +34,7 @@ def apply_symbol_filters(filters, base_price, qty=1.2):
     min_qty = float(filters["minQty"])
     step_size = float(filters["tickSize"])
     print("price_precision", price_precision, "qty_precision", qty_precision, "min_qty", min_qty, "step_size", step_size)
-    minNotional = 5
+    minNotional = 7
     min_qty = max(minNotional/base_price, min_qty)
     print("minqty:", min_qty)
     order_size = qty * min_qty
