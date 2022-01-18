@@ -115,6 +115,32 @@ def process_futures_klines(klines):
     klines["end_ts"] = klines["end_ts"].apply(to_datetime_tz)
     klines.update(klines.iloc[:, 2:].astype(float))
     return klines
+class Printer(Thread):
+    def __init__(self, cleaner):
+        Thread.__init__(self)
+        self.setDaemon(True)
+        self.cleaner = cleaner
+        
+        self.positions = {}
+        self.order_grids = order_grids
+        self.running = True
+        self.start()
+
+    def run(self):
+        while len(self.cleaner.order_grids) >= 1 and self.running:
+            self.print_positions()
+            time.sleep(5)
+
+    def print_positions(self):        
+            time.sleep(4*max_positions)
+            positions_df = pd.DataFrame.from_dict(self.cleaner.positions, orient='index')
+            print(f"{len(self.cleaner.spairs)} positions open")
+            if len(self.cleaner.spairs) > 0:
+                print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
+
+    def stop(self):
+        self.running = False
+
 
 class Cleaner(Thread):
     def __init__(self, client, order_grids):
@@ -130,7 +156,8 @@ class Cleaner(Thread):
     def run(self):
         while (len(self.spairs) > 0 and self.running):
             check_positions(self.client, self.spairs, self.positions, self.order_grids)
-            time.sleep(2*max_positions)
+            time.sleep(5)
+
     def stop(self):
         self.running = False
         
@@ -386,15 +413,17 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
                 #     send_arithmetic_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=qty, protect=False, sl=sl, ag=True, is_positioned=False)
                 # else:
                 #     send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=qty, protect=False, sl=sl, is_positioned=False)
-                res = send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=qty, protect=False, sl=sl, is_positioned=False)
+                res, grids = send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=qty, protect=False, sl=sl, is_positioned=False)
                 if res == -2019:
+                    order_grids[symbol] = grids
                     break        
                 elif res == -4164:
+                    order_grids[symbol] = grids
                     continue
                 else:
-                    print(res["tp"])
+                    print(grids["tp"])
                     n_positions += 1
-                    order_grids[symbol] = res
+                    order_grids[symbol] = grids
                 if plot_screened:
                     plot_symboL_atr_grid(symbol, data)
                 
@@ -424,13 +453,7 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
                         update_positions = True
                     else:
                         positions[symbol][1] = -100*(value - df[-1].lastPrice)/value - 0.08 #update pnl
-                    
-                    
-                # print(symbol, ": ", "signal:", signal, "intensity:", intensity, "bands:", bands)
-                # print("positions:", positions[symbol])
 
-
-        # signals[symbol] = [signal, df]
     return signals, df, data, positions, cpnl, shown_data, order_grids
 
 def prescreen():
@@ -443,10 +466,6 @@ def prescreen():
 def postscreen(filtered_perps, paper=False, positions={}, cpnl={}, update_positions=True):
     signals, rows, data, positions, cpnl, shown_data, order_grids = generate_market_signals(filtered_perps, coefs, interval, limit=99, paper=paper, positions = positions, cpnl=cpnl, update_positions=update_positions)    
     return signals, rows, data, positions, cpnl, shown_data, order_grids
-
-# def updatescreen(filtered_perps, positions, cpnl):
-#     signals, rows, data, positions, cpnl, shown_data, order_grids = generate_market_signals(filtered_perps, coefs, interval, limit=99, paper=True, positions = positions, cpnl=cpnl, update_positions=False)    
-#     return signals, rows, data, positions, cpnl, shown_data, order_grids
 
 def screen():
     all_stats = client.futures_ticker()
@@ -465,6 +484,16 @@ def main():
             print(e)
     filtered_perps = prescreen()
     # print(filtered_perps)
+
+    def print_positions(cleaner):        
+        while len(cleaner.order_grids) >= 1:
+            time.sleep(4*max_positions)
+            positions_df = pd.DataFrame.from_dict(cleaner.positions, orient='index')
+            print(f"{len(cleaner.spairs)} positions open")
+            if len(cleaner.spairs) > 0:
+                print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
+    
+    
     
     signals, rows, data, positions, cpnl, shown_data, order_grids = postscreen(filtered_perps, paper=pt, update_positions=True)
     
@@ -474,34 +503,15 @@ def main():
         spairs = list(sdf.symbol)
 
         cleaner = Cleaner(client, order_grids)
-        
-        # def print_positions(cleaner):
-        #     while len(cleaner.spairs) >= 1:
-        #         time.sleep(2)
-        #         positions_df =pd.DataFrame.from_dict(cleaner.positions, orient='index')
-        #         print(f"{len(cleaner.spairs)} positions open")
-        #         print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
-    
-        while len(cleaner.spairs) >= 1:
-            time.sleep(4*max_positions)
-            positions_df =pd.DataFrame.from_dict(cleaner.positions, orient='index')
-            print(f"{len(cleaner.spairs)} positions open")
-            if len(cleaner.spairs) > 0:
-                print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
-        # printer = Thread(target=print_positions, args=(cleaner,))
-        # printer.setDaemon(daemonic=True)
-        # printer.start()
-        # plot_all_screened(spairs, data)
-        # for pair in spairs:
-            # print(pair, ": ", data[pair]["atr_grid"])
-        # printer.join()
-        # print_positions(cleaner)
-        
+        printer = Thread(target=print_positions, args=(cleaner,))
+        printer.setDaemon(daemonic=True)
+        printer.start()
+
         print("""
         All positions closed.
         Cleaning stuff..."""
         )
-        return cleaner
+        return cleaner, printer
         # print("positions: ", positions)
     else:
         print("Nothing found :( ")  
@@ -513,10 +523,11 @@ if __name__ == "__main__":
  
         time.sleep(20)
         if ret is not None:
-            cleaner = ret
+            cleaner, printer = ret
             cleaner.stop()
+            printer.stop()
         if run_once:
             print(f"--run_once: {run_once}; exiting...")
             break
         print("Reescreening...")
-
+    os.exit()

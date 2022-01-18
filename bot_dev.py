@@ -1,4 +1,5 @@
 # %%
+from cProfile import run
 from order_grid import *
 from plot_functions import *
 from ring_buffer import RingBuffer
@@ -17,6 +18,8 @@ import os
 import pandas as pd
 import argparse
 
+runs = 0
+
 
 # %%
 
@@ -24,21 +27,17 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("-pt", "--paper_trade", type=bool, default=True)
 parser.add_argument("-tf", "--timeframe", type=str, default="15m")
-# parser.add_argument("-fd", "--fromdate", type=str, default="12 hour ago")
 parser.add_argument("-ppl", "--price_posision_low", type=float, default=0.0)
 parser.add_argument("-pph", "--price_position_high", type=float, default=0.0)
-# parser.add_argument("-gs", "--grid_shape", nargs="+", default=[, "b"])
-# parser.add_argument("-e", nargs=6, metavar=('a', 'b', 'c', 'd', 'e', 'f'),
-#                         help="my help message", type=float,
-#                         default=None)
+
 parser.add_argument("-wl", "--window_length", type=int, default=52)
 parser.add_argument("-wa", "--atr_window_length", type=int, default=8)
 parser.add_argument("-e", nargs="+", help="my help message", type=float,
                         # default=(1.0, 1.146, 1.364, 1.5, 1.618, 1.854, 2.0, 2.146, 2.364)) #1h
-                        default=(1.146, 1.364, 1.5, 1.618, 1.854, 2.0, 2.364, 2.5, 2.618)) #15min
-parser.add_argument("--max_positions", type=int, default=150)
+                        # default=(1.0, 1.146, 1.364, 1.5, 1.618, 1.854, 2.0, 2.364, 2.5, 2.618)) #15min
+                        default=(0.86, 1.0, 1.146, 1.292, 1.364, 1.5, 1.618, 1.792, 1.854, 2.0)) # 1h (maybe 5min)
+parser.add_argument("--max_positions", type=int, default=8)
 parser.add_argument("--debug", type=bool, default=False)
-# parser.add_argument("--no_orders", type=bool, default=False)
 parser.add_argument("--momentum", type=bool, default=False)
 parser.add_argument("--open_grids", type=bool, default=False)
 parser.add_argument("--check_positions_properties", type=bool, default=False)
@@ -59,13 +58,9 @@ api_key = os.environ.get("API_KEY")
 api_secret = os.environ.get("API_SECRET")
 client = Client(api_key, api_secret)
 
-#interval = Client.KLINE_INTERVAL_1HOUR
-#fromdate = "25 Dec, 2021"
-#window_length = 52
-#price_position_range = [0.15, 0.85]
 
 interval = args.timeframe
-# fromdate = args.fromdate
+
 window_length = args.window_length
 ppl, pph = args.price_posision_low, args.price_position_high
 price_position_range = [ppl, pph]
@@ -130,7 +125,7 @@ class Cleaner(Thread):
     def run(self):
         while (len(self.spairs) > 0 and self.running):
             check_positions(self.client, self.spairs, self.positions, self.order_grids)
-            time.sleep(2*max_positions)
+            time.sleep(1)
     def stop(self):
         self.running = False
         
@@ -179,13 +174,15 @@ def check_positions(client, spairs, positions, order_grids):
                 print(e)
                 if e.code == -2011:
                     new_tp, new_sl = send_tpsl(client, symbol, tp, None, side, protect=False)
+                elif e.code == -2021: #APIError(code=-2021): Order would immediately trigger.
+                    pass
                     # new_tp, new_sl = send_tpsl(client, symbol, tp, sl, side, protect=False)
             else:
                 new_tp, new_sl = send_tpsl(client, symbol, tp, None, side, protect=False)
                 # new_tp, new_sl = send_tpsl(client, symbol, tp, sl, side, protect=False)
                 symbol_grid["tp"]["orderId"] = new_tp["orderId"]
                 # symbol_grid["sl"]["orderId"] = new_sl["orderId"]
-
+            time.sleep(1.5)
 
 def compute_indicators(klines, coefs=np.array([1.0, 1.364, 1.618, 1.854, 2.0, 2.364, 2.618]), w1=12, w2=26, w3=8, w_atr=8, step=0.0):
     # compute macd
@@ -210,6 +207,7 @@ def compute_indicators(klines, coefs=np.array([1.0, 1.364, 1.618, 1.854, 2.0, 2.
     close_std = klines["close"].ewm(span=w_atr, min_periods=w_atr).std()
 
     local_volatility = (close_std/close_ema).mean()*100
+    
 
     grid_coefs = np.concatenate((np.sort(inf_grid_coefs), sup_grid_coefs))
     atr_grid = [close_ema + atr * coef for coef in grid_coefs]
@@ -304,10 +302,12 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
     shown_data = []
     order_grids = {}
     n_positions = 0
-    # for symbol in symbols.symbol:
+
     for index, row in symbols.iterrows():
+
         if n_positions >= max_positions:
             break
+
         symbol = row.symbol
         if symbol in ignore_list:
             continue
@@ -326,15 +326,11 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
 
         if debug:
             print(f"Screening {symbol}...")
-
             print(f"bands: {bands}")
             print(f"signal: {signal}")
-            # print(f"intensity: {intensity}")
             print(f"close_ema: {close_ema.iloc[-1]}")
-
             print(f"atr_grid: {atr_grid.iloc[-1]}")
             print(f"\n")
-
 
         data[symbol] = {
             "signals": bands,
@@ -354,11 +350,17 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
         if signal != 0:
 
             print(
-            f"""{symbol}:
-                signal: {signal}
-                bands: {bands}
-                volatility: {(local_volatility + global_volatility)/2} #
-            """)
+            f"""
+            #######################################
+            ####{symbol}:
+            #   signal: {signal}
+            #   bands: {bands}
+            #   volatility: {(local_volatility + global_volatility)/2}
+            #   local volatiliy: {local_volatility}
+            #   global volatiliy: {global_volatility} 
+            #######################################
+            """
+            )
 
             signals[symbol] = bands
             df.append(
@@ -372,29 +374,39 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
                     ]
                 )
             )
-
             shown_data.append(
                 pd.DataFrame(
                     [[symbol, signal, data[symbol]["signals"], data[symbol]["local_volatility"], data[symbol]["global_volatility"]]], 
                     columns = ["symbol", "signal", "bands", "local_volatility", "global_volatility"]
                         )
                     )
-
             side = signal
             if open_grids:
                 # if arithmetic_grid:
                 #     send_arithmetic_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=qty, protect=False, sl=sl, ag=True, is_positioned=False)
                 # else:
                 #     send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=qty, protect=False, sl=sl, is_positioned=False)
-                res = send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=qty, protect=False, sl=sl, is_positioned=False)
-                if res == -2019:
-                    break        
-                elif res == -4164:
+                res, grid_orders = send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=qty, protect=False, sl=sl, is_positioned=False)
+
+                if (res == -2019
+                    and grid_orders is None):
+                        break       
+
+                elif (res == -2019 and
+                    grid_orders is not None): #margin not enough to fill the grid
+
+                    print(grid_orders["tp"])
+                    n_positions += 1
+                    order_grids[symbol] = grid_orders
+                    break       
+
+                elif res == -4164: #APIError(code=-4164): Order's notional must be no smaller than 5.0 (unless you choose reduce only)
+                    order_grids[symbol] = grid_orders
                     continue
                 else:
-                    print(res["tp"])
+                    print(grid_orders["tp"])
                     n_positions += 1
-                    order_grids[symbol] = res
+                    order_grids[symbol] = grid_orders
                 if plot_screened:
                     plot_symboL_atr_grid(symbol, data)
                 
@@ -508,9 +520,10 @@ def main():
 
 
 if __name__ == "__main__":
+    data = {}
+    runs = 0
     while True:
         ret = main()
- 
         time.sleep(20)
         if ret is not None:
             cleaner = ret
@@ -518,5 +531,7 @@ if __name__ == "__main__":
         if run_once:
             print(f"--run_once: {run_once}; exiting...")
             break
+        else:
+            runs += 1
         print("Reescreening...")
 
