@@ -47,6 +47,7 @@ parser.add_argument("-gs", "--grid_step", type=float, default=0.0)
 parser.add_argument("--plot_screened", type=bool, default=False)
 parser.add_argument("--run_once", type=bool, default=False)
 
+parser.add_argument("--add_to_ignore", nargs="+", help="my help message", type=str, default=())
 parser.add_argument("-tp", "--take_profit", type=float, default=0.14)                
 parser.add_argument("-sl", "--stop_loss", type=float, default=0.1)                
 parser.add_argument("-q", "--quantity", type=float, default=1.1)
@@ -77,13 +78,20 @@ plot_screened= args.plot_screened
 check_positions_properties = args.check_positions_properties
 max_positions = args.max_positions
 run_once = args.run_once
-
+add_to_ignore = args.add_to_ignore
 tp = args.take_profit
 sl = args.stop_loss
 leverage = args.leverage
 qty = args.quantity
+
 # ignore_list = ["MATICUSDT"]
 ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT", "AXSUSDT", "XEMUSDT"]
+
+add_to_ignore = list(add_to_ignore)
+print(add_to_ignore)
+
+
+ignore_list += add_to_ignore
 
 def to_datetime_tz(arg, timedelta=-pd.Timedelta("03:00:00"), unit="ms", **kwargs):
     """
