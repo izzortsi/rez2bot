@@ -1,9 +1,6 @@
 
 # %%
 
-from ast import Call
-from subprocess import call
-import time
 import os
 
 from binance.streams import ThreadedWebsocketManager

@@ -18,16 +18,20 @@ def user_ws_callback(msg):
         symbol = order_data["s"]
         order_type = order_data["ot"]
 
-        status = order_data["X"]
+        order_status = order_data["X"]
 
         # position_amount = order_data["p"]
-        if order_type == 'TAKE_PROFIT_MARKET':
-            print(symbol, status)
+        if (order_status == 'PARTIALLY_FILLED'
+            or order_status == 'FILLED'):
+            print(symbol, order_status)
     elif msg["e"] == "ACCOUNT_UPDATE":
         if msg["a"]["m"] == "ORDER":
             msg_data = msg["a"]
-            position_data = msg_data["P"]
-            print(position_data)
+            positions_data = msg_data["P"]
+            for position_data in positions_data:
+                print(f"""{position_data["s"]}
+                    amount: {position_data["pa"]}
+                    entry price: {position_data["ep"]}""")
         else:
             print(msg["a"]["m"])
             # symbol = order_data["s"]
