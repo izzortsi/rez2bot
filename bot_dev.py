@@ -26,7 +26,7 @@ runs = 0
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-pt", "--paper_trade", type=bool, default=True)
-parser.add_argument("-tf", "--timeframe", type=str, default="15m")
+parser.add_argument("-tf", "--timeframe", type=str, default="1h")
 parser.add_argument("-ppl", "--price_posision_low", type=float, default=0.0)
 parser.add_argument("-pph", "--price_position_high", type=float, default=0.0)
 
@@ -35,7 +35,7 @@ parser.add_argument("-wa", "--atr_window_length", type=int, default=8)
 parser.add_argument("-e", nargs="+", help="my help message", type=float,
                         # default=(1.0, 1.146, 1.364, 1.5, 1.618, 1.854, 2.0, 2.146, 2.364)) #1h
                         # default=(1.0, 1.146, 1.364, 1.5, 1.618, 1.854, 2.0, 2.364, 2.5, 2.618)) #15min
-                        default=(0.92, 1.16, 1.4, 1.64, 1.88, 2.12, 2.36, 2.6)) # 15m (maybe 5min)
+                        default=(0.92, 1.16, 1.4, 1.64, 1.88, 2.12, 2.36, 2.6, 2.84)) # 15m (maybe 5min)
                         # default=(0.86, 1.0, 1.146, 1.292, 1.364, 1.5, 1.618, 1.792, 1.854, 2.0)) # 1h (maybe 5min)
 parser.add_argument("--max_positions", type=int, default=3)
 parser.add_argument("--debug", type=bool, default=False)
@@ -48,8 +48,9 @@ parser.add_argument("--plot_screened", type=bool, default=False)
 parser.add_argument("--run_once", type=bool, default=False)
 
 parser.add_argument("--add_to_ignore", nargs="+", help="my help message", type=str, default=())
+parser.add_argument("--run_only_on", nargs="+", help="my help message", type=str, default=())
 parser.add_argument("-tp", "--take_profit", type=float, default=0.14)                
-parser.add_argument("-sl", "--stop_loss", type=float, default=0.1)                
+parser.add_argument("-sl", "--stop_loss", type=float, default=0.12)                
 parser.add_argument("-q", "--quantity", type=float, default=1.1)
 parser.add_argument("-lev", "--leverage", type=int, default=17)                
 
@@ -79,6 +80,7 @@ check_positions_properties = args.check_positions_properties
 max_positions = args.max_positions
 run_once = args.run_once
 add_to_ignore = args.add_to_ignore
+run_only_on = list(args.run_only_on)
 tp = args.take_profit
 sl = args.stop_loss
 leverage = args.leverage
@@ -316,11 +318,12 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
 
         if n_positions >= max_positions:
             break
-
+        
         symbol = row.symbol
         if symbol in ignore_list:
             continue
-
+        if len(run_only_on) > 0 and symbol not in run_only_on:
+            continue
         klines = client.futures_klines(symbol=symbol, interval=interval, limit=limit)
         klines = process_futures_klines(klines)
         data_window = klines.tail(window_length)
