@@ -551,10 +551,12 @@ class Checker(Thread):
 
     def run(self):
         while self.running:
-            if (not cleaner.running) and (not printer.running):
+            print("Checking cleaner and printer statuses...")
+            if (not self.cleaner.running) and (not self.printer.running):
                 # self.reescreen = True
                 self.cleaner, self.printer = main()
-            time.sleep(2.5)
+            
+            time.sleep(5)
 
     def stop(self):
         self.running = False
