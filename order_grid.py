@@ -194,7 +194,7 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
                     exit_price,
                     price_precision,
                 )
-                print(formatted_sl_price)
+                # print(formatted_sl_price)
                 try:
                     sl_order_mkt = client.futures_create_order(
                         symbol=symbol,
