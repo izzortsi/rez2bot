@@ -558,7 +558,7 @@ class Checker(Thread):
                 print("Reescreening...")
                 self.cleaner, self.printer = main()
                 time.sleep(10)
-            elif (self.cleaner.spairs) >= 1 and self.cleaner.spairs < max_positions:
+            elif len(self.cleaner.spairs) >= 1 and len(self.cleaner.spairs) < max_positions:
                 
                 signals, rows, data, positions, shown_data, order_grids = screen(ignore=self.cleaner.spairs)
                 self.cleaner.order_grids, self.cleaner.spairs = order_grids, list(order_grids.keys())
