@@ -562,7 +562,7 @@ class Checker(Thread):
                 
                 signals, rows, data, positions, shown_data, order_grids = screen(ignore=self.cleaner.spairs)
                 self.cleaner.order_grids, self.cleaner.spairs = order_grids, list(order_grids.keys())
-
+                time.sleep(2)
             elif run_once:
                 self.stop()
             else:    
