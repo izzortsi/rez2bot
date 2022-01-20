@@ -1,4 +1,5 @@
 # %%
+from cProfile import run
 from order_grid import *
 from plot_functions import *
 from ring_buffer import RingBuffer
@@ -121,7 +122,78 @@ def process_futures_klines(klines):
     klines.update(klines.iloc[:, 2:].astype(float))
     return klines
 
+class Cleaner(Thread):
+    def __init__(self, client, order_grids):
+        Thread.__init__(self)
+        self.setDaemon(True)
+        self.client = client
+        self.spairs = list(order_grids.keys())
+        self.positions = {}
+        self.order_grids = order_grids
+        self.running = True
+        self.start()
 
+    def run(self):
+        while (len(self.spairs) > 0 and self.running):
+            check_positions(self.client, self.spairs, self.positions, self.order_grids)
+            time.sleep(1)
+    def stop(self):
+        self.running = False
+        
+def check_positions(client, spairs, positions, order_grids):
+    for symbol in spairs:
+        try:
+            last_entry_price = float(positions[symbol]["entryPrice"])
+        except KeyError as e:
+            print(e)
+            last_entry_price = None
+        # last_position_amount = float(positions[symbol]["positionAmt"])
+
+        is_closed = False
+        symbol_grid = order_grids[symbol]
+        position = client.futures_position_information(symbol=symbol)
+        positions[symbol] = position[0]
+        entry_price = float(position[0]["entryPrice"])
+        position_qty = float(position[0]["positionAmt"])
+        side = -1 if position_qty < 0 else 1
+        position_qty = abs(position_qty)
+        # print(json.dumps(position[0], indent=2))
+        
+        if entry_price == 0.0 and position_qty == 0.0: 
+
+            is_closed = True
+        
+            try:
+                client.futures_cancel_all_open_orders(symbol=symbol)
+            except BinanceAPIException as e:
+                print(e)
+            else:                
+                spairs.remove(symbol)
+                del positions[symbol]
+            # positions.remove(symbol)
+        elif entry_price != last_entry_price:
+            print(f"""entry price: {entry_price};
+                    last entry price: {last_entry_price}
+                    difference: {abs(entry_price - last_entry_price) if last_entry_price is not None else None}""")
+            print(f"changed tp and sl for {symbol}'s position")
+            tp_id = symbol_grid["tp"]["orderId"]
+            # sl_id = symbol_grid["sl"]["orderId"]
+            try:
+                client.futures_cancel_order(symbol=symbol, orderId=tp_id)
+                # client.futures_cancel_order(symbol=symbol, orderId=sl_id)
+            except BinanceAPIException as e:
+                print(e)
+                if e.code == -2011:
+                    new_tp, new_sl = send_tpsl(client, symbol, tp, None, side, protect=False)
+                elif e.code == -2021: #APIError(code=-2021): Order would immediately trigger.
+                    pass
+                    # new_tp, new_sl = send_tpsl(client, symbol, tp, sl, side, protect=False)
+            else:
+                new_tp, new_sl = send_tpsl(client, symbol, tp, None, side, protect=False)
+                # new_tp, new_sl = send_tpsl(client, symbol, tp, sl, side, protect=False)
+                symbol_grid["tp"]["orderId"] = new_tp["orderId"]
+                # symbol_grid["sl"]["orderId"] = new_sl["orderId"]
+            time.sleep(1.5)
 
 def compute_indicators(klines, coefs=np.array([1.0, 1.364, 1.618, 1.854, 2.0, 2.364, 2.618]), w1=12, w2=26, w3=8, w_atr=8, step=0.0):
     # compute macd
@@ -291,13 +363,13 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
 
             print(
             f"""
-            #################################################################################
-            ##  {symbol}:
-            ##      signal: {signal}
-            ##      bands: {bands}
-            ##      volatility: {(local_volatility + global_volatility)/2}
-            ##      local volatiliy: {local_volatility}
-            ##      global volatiliy: {global_volatility} 
+            ################################################################################
+            # {symbol}:
+            #   signal: {signal}
+            #   bands: {bands}
+            #   volatility: {(local_volatility + global_volatility)/2}
+            #   local volatiliy: {local_volatility}
+            #   global volatiliy: {global_volatility} 
             #################################################################################
             """
             )
@@ -409,172 +481,6 @@ def screen():
     signals, rows, data, positions, shown_data, order_grids = generate_market_signals(filtered_perps, coefs, interval, update_positions=True)
     return signals, rows, data, positions, shown_data, order_grids
 
-# class Printer(Thread):
-#     def __init__(self, data, positions, cpnl, order_grids):
-#         Thread.__init__(self)
-#         self.data = data
-#         self.positions = positions
-#         self.cpnl = cpnl
-#         self.order_grids = order_grids
-#         self.daemon = True
-#         self.start()
-
-#     def run(self):
-#         while True:
-#             # print(self.data)
-#             # print(self.positions)
-#             # print(self.cpnl)
-#             print(self.order_grids)
-#             time.sleep(1)
-
-class Cleaner(Thread):
-    def __init__(self, client, order_grids):
-        Thread.__init__(self)
-        self.setDaemon(True)
-        self.client = client
-        self.spairs = list(order_grids.keys())
-        self.positions = {}
-        self.order_grids = order_grids
-        self.running = True
-        self.start()
-
-    def run(self):
-        while (len(self.spairs) > 0 and self.running):
-            check_positions(self.client, self.spairs, self.positions, self.order_grids)
-            time.sleep(1)
-    def stop(self):
-        self.running = False
-        
-def check_positions(client, spairs, positions, order_grids):
-    for symbol in spairs:
-        try:
-            last_entry_price = float(positions[symbol]["entryPrice"])
-        except KeyError as e:
-            print(e)
-            last_entry_price = None
-        # last_position_amount = float(positions[symbol]["positionAmt"])
-
-        is_closed = False
-        symbol_grid = order_grids[symbol]
-        position = client.futures_position_information(symbol=symbol)
-        positions[symbol] = position[0]
-        entry_price = float(position[0]["entryPrice"])
-        position_qty = float(position[0]["positionAmt"])
-        side = -1 if position_qty < 0 else 1
-        position_qty = abs(position_qty)
-        # print(json.dumps(position[0], indent=2))
-        
-        if entry_price == 0.0 and position_qty == 0.0: 
-
-            is_closed = True
-        
-            try:
-                client.futures_cancel_all_open_orders(symbol=symbol)
-            except BinanceAPIException as e:
-                print(e)
-            else:                
-                spairs.remove(symbol)
-                del positions[symbol]
-            # positions.remove(symbol)
-        elif entry_price != last_entry_price:
-            print(f"""entry price: {entry_price};
-                    last entry price: {last_entry_price}
-                    difference: {abs(entry_price - last_entry_price) if last_entry_price is not None else None}""")
-            print(f"changed tp and sl for {symbol}'s position")
-            tp_id = symbol_grid["tp"]["orderId"]
-            # sl_id = symbol_grid["sl"]["orderId"]
-            try:
-                client.futures_cancel_order(symbol=symbol, orderId=tp_id)
-                # client.futures_cancel_order(symbol=symbol, orderId=sl_id)
-            except BinanceAPIException as e:
-                print(e)
-                if e.code == -2011:
-                    new_tp, new_sl = send_tpsl(client, symbol, tp, None, side, protect=False)
-                elif e.code == -2021: #APIError(code=-2021): Order would immediately trigger.
-                    pass
-                    # new_tp, new_sl = send_tpsl(client, symbol, tp, sl, side, protect=False)
-            else:
-                new_tp, new_sl = send_tpsl(client, symbol, tp, None, side, protect=False)
-                # new_tp, new_sl = send_tpsl(client, symbol, tp, sl, side, protect=False)
-                symbol_grid["tp"]["orderId"] = new_tp["orderId"]
-                # symbol_grid["sl"]["orderId"] = new_sl["orderId"]
-            time.sleep(1.5)
-class Printer(Thread):
-    def __init__(self, cleaner):
-        Thread.__init__(self)
-        self.setDaemon(True)
-        self.cleaner = cleaner
-        self.running = True
-        self.start()
-
-    def run(self):
-        
-        while len(self.cleaner.spairs) >= 1:
-            time.sleep(3)
-            positions_df =pd.DataFrame.from_dict(self.cleaner.positions, orient='index')
-            print(f"{len(self.cleaner.spairs)} positions open")
-            if len(self.cleaner.spairs) > 0:
-                print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
-
-        print("""
-        All positions closed.
-        Cleaning stuff.
-        Wait for 20 seconds."""
-        )
-
-        
-        self.cleaner.stop()
-        self.stop()
-        time.sleep(20)
-
-    def stop(self):
-        self.running = False
-
-def print_positions(cleaner):
-    while len(cleaner.spairs) >= 1:
-        time.sleep(3)
-        positions_df =pd.DataFrame.from_dict(cleaner.positions, orient='index')
-        print(f"{len(cleaner.spairs)} positions open")
-        if len(cleaner.spairs) > 0:
-            print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
-
-
-class Checker(Thread):
-    def __init__(self, cleaner, printer):
-        Thread.__init__(self)
-        self.cleaner = cleaner
-        self.printer = printer
-        self.daemon = True
-        self.running = True
-        # self.reescreen = False
-        self.start()
-
-    def run(self):
-        while self.running:
-            
-            print(f"""Checking cleaner and printer statuses... 
-            Cleaner is running:: {self.cleaner.running}
-            Printer is running:: {self.printer.running}
-            """)
-
-            if (
-                (not self.cleaner.running) 
-                and (not self.printer.running)
-                and (not run_once)
-            ):  
-                # self.reescreen = True
-                print("Reescreening...")
-                self.cleaner, self.printer = main()
-                time.sleep(10)
-            elif run_once:
-                self.stop()
-            else:    
-                time.sleep(10)
-
-        
-    def stop(self):
-        self.running = False
-
 def main():
      
     if check_positions_properties:
@@ -584,6 +490,7 @@ def main():
             print(e)
     filtered_perps = prescreen()
     # print(filtered_perps)
+    
     signals, rows, data, positions, cpnl, shown_data, order_grids = postscreen(filtered_perps, paper=pt, update_positions=True)
     
     if len(rows) > 0:
@@ -592,32 +499,52 @@ def main():
         spairs = list(sdf.symbol)
 
         cleaner = Cleaner(client, order_grids)
-        printer = Printer(cleaner)
-
-        return cleaner, printer
-
+        
+        # def print_positions(cleaner):
+        #     while len(cleaner.spairs) >= 1:
+        #         time.sleep(2)
+        #         positions_df =pd.DataFrame.from_dict(cleaner.positions, orient='index')
+        #         print(f"{len(cleaner.spairs)} positions open")
+        #         print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
+    
+        while len(cleaner.spairs) >= 1:
+            time.sleep(3)
+            positions_df =pd.DataFrame.from_dict(cleaner.positions, orient='index')
+            print(f"{len(cleaner.spairs)} positions open")
+            if len(cleaner.spairs) > 0:
+                print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
+        # printer = Thread(target=print_positions, args=(cleaner,))
+        # printer.setDaemon(daemonic=True)
+        # printer.start()
+        # plot_all_screened(spairs, data)
+        # for pair in spairs:
+            # print(pair, ": ", data[pair]["atr_grid"])
+        # printer.join()
+        # print_positions(cleaner)
+        
+        print("""
+        All positions closed.
+        Cleaning stuff..."""
+        )
+        return cleaner
+        # print("positions: ", positions)
     else:
-        print("Nothing found :( ")
-        return None, None
+        print("Nothing found :( ")  
 
-reescreen = False
 
 if __name__ == "__main__":
     data = {}
     runs = 0
-    ret = main()
-    cleaner, printer = ret[0], ret[1]
-    time.sleep(5)
-    checker = Checker(cleaner, printer)
-    print(cleaner, printer, checker)
-    
-    # def checker_callback(cleaner, printer):
-    #     while True:
-    #         if not (cleaner.running or printer.running):
-    #             global reescreen
-    #             reescreen = True
+    while True:
+        ret = main()
+        time.sleep(20)
+        if ret is not None:
+            cleaner = ret
+            cleaner.stop()
+        if run_once:
+            print(f"--run_once: {run_once}; exiting...")
+            break
+        else:
+            runs += 1
+        print("Reescreening...")
 
-    # checker = Thread(target=checker_callback, args=(cleaner, printer,))
-    # checker.setDaemon(daemonic=True)
-    # checker.start()
-    time.sleep(1)
