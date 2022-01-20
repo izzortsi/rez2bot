@@ -1,5 +1,4 @@
 # %%
-from cProfile import run
 from order_grid import *
 from plot_functions import *
 from ring_buffer import RingBuffer
