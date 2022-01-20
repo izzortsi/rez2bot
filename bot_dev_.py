@@ -557,13 +557,21 @@ class Checker(Thread):
             Printer is running:: {self.printer.running}
             """)
 
-            if (not self.cleaner.running) and (not self.printer.running):
+            if (
+                (not self.cleaner.running) 
+                and (not self.printer.running)
+                and (not run_once)
+            ):  
                 # self.reescreen = True
                 print("Reescreening...")
                 self.cleaner, self.printer = main()
                 time.sleep(10)
-            time.sleep(10)
+            elif run_once:
+                self.stop()
+            else:    
+                time.sleep(10)
 
+        
     def stop(self):
         self.running = False
 
