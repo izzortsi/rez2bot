@@ -93,7 +93,8 @@ qty = args.quantity
 
 # ignore_list = ["MATICUSDT"]
 # ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT", "AXSUSDT", "XEMUSDT"]
-ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT", "AXSUSDT", "XEMUSDT", "LRCUSDT"] #somehow buggy
+# ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT", "AXSUSDT", "XEMUSDT", "LRCUSDT"] #somehow buggy
+ignore_list = ["HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT",  "XEMUSDT", "LRCUSDT"] #somehow buggy
 already_open = ["NKNUSDT", "BAKEUSDT", "DGBUSDT"] #somehow open
 add_to_ignore = list(add_to_ignore)
 print(add_to_ignore)
@@ -264,7 +265,7 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
     for index, row in symbols.iterrows():
 
         if n_positions >= max_positions:
-            print("npositons", n_positions)
+            print("n_positions", n_positions)
             break
         
         symbol = row.symbol
@@ -571,11 +572,15 @@ class Checker(Thread):
         while self.running:
             
             print(f"""Checking cleaner and printer statuses... 
-            Cleaner is running:: {self.cleaner.running}
-            Printer is running:: {self.printer.running}
+            Cleaner is running:: {self.cleaner.running if self.cleaner is not None else None}
+            Printer is running:: {self.printer.running if self.printer is not None else None}
             """)
-
-            if (
+            if (self.cleaner is None 
+                or self.printer is None):
+                print("Reescreening...")
+                self.cleaner, self.printer = main()
+                time.sleep(15)
+            elif (
                 (not self.cleaner.running) 
                 and (not self.printer.running)
                 and (not run_once)
@@ -630,10 +635,17 @@ if __name__ == "__main__":
     runs = 0
     ret = main()
     cleaner, printer = ret[0], ret[1]
+
+    # while (cleaner is None 
+    #     or printer is None):
+    #         ret = main()
+    #         cleaner, printer = ret[0], ret[1]
+
     time.sleep(5)
     checker = Checker(cleaner, printer)
     print(cleaner, printer, checker)
-    
+
+
     # def checker_callback(cleaner, printer):
     #     while True:
     #         if not (cleaner.running or printer.running):
