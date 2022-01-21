@@ -32,9 +32,13 @@ parser.add_argument("-pph", "--price_position_high", type=float, default=0.0)
 parser.add_argument("-wl", "--window_length", type=int, default=52)
 parser.add_argument("-wa", "--atr_window_length", type=int, default=8)
 parser.add_argument("-e", nargs="+", help="my help message", type=float,
+                        default= (1.16, 1.28, 1.4, 1.52, 1.64, 1.76, 1.88, 2.0, 2.12, 2.24, 2.36, 2.48),
+                        ) # 15m (maybe 5min)
                         # default=(1.0, 1.146, 1.364, 1.5, 1.618, 1.854, 2.0, 2.146, 2.364)) #1h
                         # default=(1.0, 1.146, 1.364, 1.5, 1.618, 1.854, 2.0, 2.364, 2.5, 2.618)) #15min
-                        default=(0.92, 1.16, 1.4, 1.64, 1.88, 2.12, 2.36, 2.6, 2.84)) # 15m (maybe 5min)
+                        # default=(0.92, 1.16, 1.4, 1.64, 1.88, 2.12, 2.36, 2.6, 2.84)) # 15m (maybe 5min)
+                        # default=(1.16, 1.4, 1.64, 1.88, 2.12, 2.36, 2.6, 2.84)) # 15m (maybe 5min)
+                        
                         # default=(0.86, 1.0, 1.146, 1.292, 1.364, 1.5, 1.618, 1.792, 1.854, 2.0)) # 1h (maybe 5min)
 parser.add_argument("--max_positions", type=int, default=3)
 parser.add_argument("--debug", type=bool, default=False)
@@ -335,8 +339,8 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
 
                 elif (res == -2019 and
                     grid_orders is not None): #margin not enough to fill the grid
-
-                    print("gridorderstest:", grid_orders["tp"])
+                    if debug:
+                        print("gridorderstest:", grid_orders["tp"])
                     n_positions += 1
                     order_grids[symbol] = grid_orders
                     break       
@@ -346,7 +350,8 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
                     n_positions += 1
                     continue
                 else:
-                    print(grid_orders["tp"])
+                    if debug:
+                        print(grid_orders["tp"])
                     n_positions += 1
                     order_grids[symbol] = grid_orders
                 if plot_screened:
@@ -425,8 +430,8 @@ def screen(ignore=[]):
     perps = process_all_stats(all_stats)
     filtered_perps = filter_perps(perps, price_position_range=price_position_range)
     filtered_perps = pd.concat(filtered_perps, axis=0)
-    signals, rows, data, positions, shown_data, order_grids = generate_market_signals(filtered_perps, coefs, interval, update_positions=True, ignore=ignore)
-    return signals, rows, data, positions, shown_data, order_grids
+    signals, rows, data, positions, cpnl, shown_data, order_grids = generate_market_signals(filtered_perps, coefs, interval, update_positions=True, ignore=ignore)
+    return signals, rows, data, positions, cpnl, shown_data, order_grids
 class Cleaner(Thread):
     def __init__(self, client, order_grids):
         Thread.__init__(self)
@@ -560,7 +565,7 @@ class Checker(Thread):
                 time.sleep(10)
             elif len(self.cleaner.spairs) >= 1 and len(self.cleaner.spairs) < max_positions:
                 
-                signals, rows, data, positions, shown_data, order_grids = screen(ignore=self.cleaner.spairs)
+                signals, rows, data, positions, cpnl, shown_data, order_grids = screen(ignore=self.cleaner.spairs)
                 self.cleaner.order_grids, self.cleaner.spairs = order_grids, list(order_grids.keys())
                 time.sleep(2)
             elif run_once:
