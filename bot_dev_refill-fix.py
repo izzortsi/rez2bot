@@ -547,13 +547,13 @@ class Printer(Thread):
         print("""
         All positions closed.
         Cleaning stuff.
-        Wait for 20 seconds."""
+        Wait for 5 seconds."""
         )
 
         
         self.cleaner.stop()
         self.stop()
-        time.sleep(20)
+        time.sleep(5)
 
     def stop(self):
         self.running = False
@@ -579,7 +579,7 @@ class Checker(Thread):
                 or self.printer is None):
                 print("Reescreening...")
                 self.cleaner, self.printer = main()
-                time.sleep(15)
+                time.sleep(3)
             elif (
                 (not self.cleaner.running) 
                 and (not self.printer.running)
@@ -588,11 +588,15 @@ class Checker(Thread):
                 # self.reescreen = True
                 print("Reescreening...")
                 self.cleaner, self.printer = main()
-                time.sleep(15)
+                time.sleep(10)
             elif len(self.cleaner.spairs) >= 1 and len(self.cleaner.spairs) < max_positions:
                 
                 signals, rows, data, positions, cpnl, shown_data, order_grids = screen(n_positions = len(self.cleaner.spairs), ignore=self.cleaner.spairs)
-                self.cleaner.order_grids, self.cleaner.spairs = order_grids, list(order_grids.keys())
+                for symbol in order_grids:
+                    self.cleaner.order_grids[symbol] = order_grids[symbol]
+                    if symbol not in self.cleaner.spairs:
+                        self.cleaner.spairs.append(symbol)
+                # self.cleaner.order_grids, self.cleaner.spairs = order_grids, list(order_grids.keys())
                 time.sleep(15)
             elif run_once:
                 self.stop()
@@ -633,8 +637,8 @@ reescreen = False
 if __name__ == "__main__":
     data = {}
     runs = 0
-    ret = main()
-    cleaner, printer = ret[0], ret[1]
+    # ret = main()
+    # cleaner, printer = ret[0], ret[1]
 
     # while (cleaner is None 
     #     or printer is None):
@@ -642,6 +646,7 @@ if __name__ == "__main__":
     #         cleaner, printer = ret[0], ret[1]
 
     time.sleep(5)
+    cleaner, printer = None, None
     checker = Checker(cleaner, printer)
     print(cleaner, printer, checker)
 
