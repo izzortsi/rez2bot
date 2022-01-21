@@ -425,13 +425,18 @@ def postscreen(filtered_perps, paper=False, positions={}, cpnl={}, update_positi
 #             # print(self.cpnl)
 #             print(self.order_grids)
 #             time.sleep(1)
-def screen(ignore=[]):
+
+
+def screen(n_positions=0, ignore=[]):
     all_stats = client.futures_ticker()
     perps = process_all_stats(all_stats)
     filtered_perps = filter_perps(perps, price_position_range=price_position_range)
     filtered_perps = pd.concat(filtered_perps, axis=0)
-    signals, rows, data, positions, cpnl, shown_data, order_grids = generate_market_signals(filtered_perps, coefs, interval, update_positions=True, ignore=ignore)
+    signals, rows, data, positions, cpnl, shown_data, order_grids = generate_market_signals(filtered_perps, coefs, interval, update_positions=True, n_positions=n_positions, ignore=ignore)
     return signals, rows, data, positions, cpnl, shown_data, order_grids
+
+
+
 class Cleaner(Thread):
     def __init__(self, client, order_grids):
         Thread.__init__(self)
@@ -565,7 +570,7 @@ class Checker(Thread):
                 time.sleep(10)
             elif len(self.cleaner.spairs) >= 1 and len(self.cleaner.spairs) < max_positions:
                 
-                signals, rows, data, positions, cpnl, shown_data, order_grids = screen(ignore=self.cleaner.spairs)
+                signals, rows, data, positions, cpnl, shown_data, order_grids = screen(n_positions = len(self.cleaner.spairs), ignore=self.cleaner.spairs)
                 self.cleaner.order_grids, self.cleaner.spairs = order_grids, list(order_grids.keys())
                 time.sleep(2)
             elif run_once:
