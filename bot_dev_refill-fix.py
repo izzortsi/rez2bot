@@ -49,7 +49,7 @@ parser.add_argument("-ag", "--arithmetic_grid", type=bool, default=False)
 parser.add_argument("-gs", "--grid_step", type=float, default=0.0)
 parser.add_argument("--plot_screened", type=bool, default=False)
 parser.add_argument("--run_once", type=bool, default=False)
-
+parser.add_argument("--screen_by_volatility", type=bool, default=False)
 parser.add_argument("--add_to_ignore", nargs="+", help="my help message", type=str, default=())
 parser.add_argument("--run_only_on", nargs="+", help="my help message", type=str, default=())
 parser.add_argument("-tp", "--take_profit", type=float, default=0.14)                
@@ -82,6 +82,7 @@ plot_screened= args.plot_screened
 check_positions_properties = args.check_positions_properties
 max_positions = args.max_positions
 run_once = args.run_once
+screen_by_volatility = args.screen_by_volatility
 add_to_ignore = args.add_to_ignore
 run_only_on = list(args.run_only_on)
 tp = args.take_profit
@@ -225,15 +226,26 @@ def filter_perps(perps, price_position_range=[0.3, 0.7]):
             if (
                 # price_position <= 0.2 or price_position >= 0.8
                 price_position >= price_position_range[0]
-                or price_position <= price_position_range[1]
+                and price_position <= price_position_range[1]
             ):  # and float(row.priceChangePercent.iloc[-1]) >= -2.0:
                 # if float(row.priceChangePercent.iloc[-1]) >= -1:
                 # print(price_position)
                 screened_symbols.append(row)
+    avg_price_position: sum(np.array(price_positions))/len(price_positions)
+    avg_daily_volatility: sum(np.array(daily_volatilities))/len(daily_volatilities)
+    avg_price_change: sum(np.array(price_change))/len(price_change)
+
     print("MARKET SUMMARY:")                
-    print(f"avg price position: {sum(np.array(price_positions))/len(price_positions)}")
-    print(f"avg daily volatility: {sum(np.array(daily_volatilities))/len(daily_volatilities)}")
-    print(f"avg % price change: {sum(np.array(price_change))/len(price_change)}")
+    print(f"avg price position: {avg_price_position}")
+    print(f"avg daily volatility: {avg_daily_volatility}")
+    print(f"avg % price change: {avg_price_change}")
+    
+    if screen_by_volatility:
+        screened_symbols = [
+            row
+            for row in screened_symbols
+            if row.dailyVolatility.iloc[-1] > avg_daily_volatility
+        ]
     return screened_symbols
 
 
@@ -453,7 +465,7 @@ class Cleaner(Thread):
         while (len(self.spairs) > 0 and self.running):
             check_positions(self.client, self.spairs, self.positions, self.order_grids)
             # self.spairs = list(self.order_grids.keys())
-            time.sleep(1)
+            time.sleep(0.5)
     def stop(self):
         self.running = False
         
@@ -522,7 +534,7 @@ class Printer(Thread):
     def run(self):
         
         while len(self.cleaner.spairs) >= 1:
-            time.sleep(3)
+            time.sleep(8)
             positions_df =pd.DataFrame.from_dict(self.cleaner.positions, orient='index')
             print(f"{len(self.cleaner.spairs)} positions open")
             if len(self.cleaner.spairs) > 0:
