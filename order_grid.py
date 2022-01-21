@@ -59,12 +59,23 @@ def compute_exit(entry_price, target_profit, side, entry_fee=0.04, exit_fee=0.04
 
 
 
-def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1, sl=None, protect=False, is_positioned=False):
+def send_order_grid(client, symbol, data, inf_grid, sup_grid, tp, side, coefs, qty=1.1, sl=None, protect=False, is_positioned=False):
     # print(inf_grid)
     # grid_orders = []
+    bands_through = data["signals"]
+    print(bands_through)
+    bands_to_enter = []
+    enter_from_band = None
+    for i, passed_band in enumerate(bands_through):
+        if passed_band == 0:
+            bands_to_enter.append(i)
+    enter_from_band = bands_to_enter[0]
+    print(enter_from_band)
+    print(bands_to_enter)
     grid_orders = dict(entry = None, tp = None, sl = None, grid = [])
-    grid_entries = [band.values[-1] for band in inf_grid] if side == 1 else [band.values[-1] for band in sup_grid]
-
+    inf_grid[enter_from_band:]
+    grid_entries = [band.values[-1] for band in inf_grid[enter_from_band:]] if side == 1 else [band.values[-1] for band in sup_grid[enter_from_band:]]
+    print(grid_entries)
     if side == -1:
         side = "SELL"
         counterside = "BUY"
@@ -127,7 +138,7 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
             entry = round_step_size(entry, step_size)
 
             formatted_grid_entry_price = price_formatter(entry, price_precision)
-            formatted_order_size = qty_formatter(order_size*coefs[i]*qty**i, qty_precision)
+            formatted_order_size = qty_formatter(order_size*coefs[i+enter_from_band]*qty**i, qty_precision)
             # print(formatted_grid_entry_price)
             try:
                 grid_order = client.futures_create_order(
