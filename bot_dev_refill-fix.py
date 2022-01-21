@@ -33,7 +33,8 @@ parser.add_argument("-wl", "--window_length", type=int, default=52)
 parser.add_argument("-wa", "--atr_window_length", type=int, default=8)
 parser.add_argument("-e", nargs="+", help="my help message", type=float,
                         # default= (1.16, 1.28, 1.4, 1.52, 1.64, 1.76, 1.88, 2.0, 2.12, 2.24, 2.36, 2.48)) # 15m (maybe 5min)
-                        default= (1.16, 1.28, 1.4, 1.52, 1.64, 1.76, 1.88, 2.0, 2.12)) # 15m (maybe 5min)
+                        # default= (1.16, 1.28, 1.4, 1.52, 1.64, 1.76, 1.88, 2.0, 2.12)) # 15m (maybe 5min)
+                        default= (1.52, 1.64, 1.76, 1.88, 2.0, 2.12)) # 15m (maybe 5min)
                         # default=(1.0, 1.146, 1.364, 1.5, 1.618, 1.854, 2.0, 2.146, 2.364)) #1h
                         # default=(1.0, 1.146, 1.364, 1.5, 1.618, 1.854, 2.0, 2.364, 2.5, 2.618)) #15min
                         # default=(0.92, 1.16, 1.4, 1.64, 1.88, 2.12, 2.36, 2.6, 2.84)) # 15m (maybe 5min)
