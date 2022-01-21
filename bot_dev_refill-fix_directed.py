@@ -42,6 +42,7 @@ parser.add_argument("-e", nargs="+", help="my help message", type=float,
                         
                         # default=(0.86, 1.0, 1.146, 1.292, 1.364, 1.5, 1.618, 1.792, 1.854, 2.0)) # 1h (maybe 5min)
 parser.add_argument("--max_positions", type=int, default=3)
+parser.add_argument("--direction", type=int, default=0)
 parser.add_argument("--debug", type=bool, default=False)
 parser.add_argument("--momentum", type=bool, default=False)
 parser.add_argument("--open_grids", type=bool, default=False)
@@ -82,6 +83,7 @@ gs = args.grid_step
 plot_screened= args.plot_screened
 check_positions_properties = args.check_positions_properties
 max_positions = args.max_positions
+direction = args.direction
 run_once = args.run_once
 screen_by_volatility = args.screen_by_volatility
 add_to_ignore = args.add_to_ignore
@@ -232,22 +234,22 @@ def filter_perps(perps, price_position_range=[0.3, 0.7]):
                 # if float(row.priceChangePercent.iloc[-1]) >= -1:
                 # print(price_position)
                 screened_symbols.append(row)
+
     avg_price_position= sum(np.array(price_positions))/len(price_positions)
     avg_daily_volatility= sum(np.array(daily_volatilities))/len(daily_volatilities)
     avg_price_change= sum(np.array(price_change))/len(price_change)
 
     print("MARKET SUMMARY:")                
     print(f"avg price position: {avg_price_position}")
-    print(f"avg daily volatility: {avg_daily_volatility[0]}")
+    print(f"avg daily volatility: {avg_daily_volatility}")
     print(f"avg % price change: {avg_price_change}")
     
     if screen_by_volatility:
         screened_symbols = [
             row
             for row in screened_symbols
-            if row.dailyVolatility.iloc[-1] > avg_daily_volatility[0]
+            if row.dailyVolatility.iloc[-1] > avg_daily_volatility
         ]
-        # print(screened_symbols)
     return screened_symbols
 
 
@@ -264,7 +266,6 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
     for index, row in symbols.iterrows():
 
         if n_positions >= max_positions:
-            print("npositons", n_positions)
             break
         
         symbol = row.symbol
@@ -284,6 +285,9 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
 
         signal, bands = generate_signal(dw, coefs, hist, inf_grid, sup_grid)
         intensity = sum(bands)/sum(coefs)
+
+        if direction != 0 and signal != direction: 
+                continue
 
         if debug:
             print(f"Screening {symbol}...")
@@ -583,12 +587,12 @@ class Checker(Thread):
                 # self.reescreen = True
                 print("Reescreening...")
                 self.cleaner, self.printer = main()
-                time.sleep(15)
+                time.sleep(10)
             elif len(self.cleaner.spairs) >= 1 and len(self.cleaner.spairs) < max_positions:
                 
                 signals, rows, data, positions, cpnl, shown_data, order_grids = screen(n_positions = len(self.cleaner.spairs), ignore=self.cleaner.spairs)
                 self.cleaner.order_grids, self.cleaner.spairs = order_grids, list(order_grids.keys())
-                time.sleep(15)
+                time.sleep(2)
             elif run_once:
                 self.stop()
             else:    
