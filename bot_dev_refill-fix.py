@@ -32,9 +32,14 @@ parser.add_argument("-pph", "--price_position_high", type=float, default=0.0)
 parser.add_argument("-wl", "--window_length", type=int, default=52)
 parser.add_argument("-wa", "--atr_window_length", type=int, default=8)
 parser.add_argument("-e", nargs="+", help="my help message", type=float,
+                        # default= (1.16, 1.28, 1.4, 1.52, 1.64, 1.76, 1.88, 2.0, 2.12, 2.24, 2.36, 2.48)) # 15m (maybe 5min)
+                        # default= (1.16, 1.28, 1.4, 1.52, 1.64, 1.76, 1.88, 2.0, 2.12)) # 15m (maybe 5min)
+                        default= (1.52, 1.64, 1.76, 1.88, 2.0, 2.12)) # 15m (maybe 5min)
                         # default=(1.0, 1.146, 1.364, 1.5, 1.618, 1.854, 2.0, 2.146, 2.364)) #1h
                         # default=(1.0, 1.146, 1.364, 1.5, 1.618, 1.854, 2.0, 2.364, 2.5, 2.618)) #15min
-                        default=(0.92, 1.16, 1.4, 1.64, 1.88, 2.12, 2.36, 2.6, 2.84)) # 15m (maybe 5min)
+                        # default=(0.92, 1.16, 1.4, 1.64, 1.88, 2.12, 2.36, 2.6, 2.84)) # 15m (maybe 5min)
+                        # default=(1.16, 1.4, 1.64, 1.88, 2.12, 2.36, 2.6, 2.84)) # 15m (maybe 5min)
+                        
                         # default=(0.86, 1.0, 1.146, 1.292, 1.364, 1.5, 1.618, 1.792, 1.854, 2.0)) # 1h (maybe 5min)
 parser.add_argument("--max_positions", type=int, default=3)
 parser.add_argument("--debug", type=bool, default=False)
@@ -45,7 +50,7 @@ parser.add_argument("-ag", "--arithmetic_grid", type=bool, default=False)
 parser.add_argument("-gs", "--grid_step", type=float, default=0.0)
 parser.add_argument("--plot_screened", type=bool, default=False)
 parser.add_argument("--run_once", type=bool, default=False)
-
+parser.add_argument("--screen_by_volatility", type=bool, default=False)
 parser.add_argument("--add_to_ignore", nargs="+", help="my help message", type=str, default=())
 parser.add_argument("--run_only_on", nargs="+", help="my help message", type=str, default=())
 parser.add_argument("-tp", "--take_profit", type=float, default=0.14)                
@@ -78,6 +83,7 @@ plot_screened= args.plot_screened
 check_positions_properties = args.check_positions_properties
 max_positions = args.max_positions
 run_once = args.run_once
+screen_by_volatility = args.screen_by_volatility
 add_to_ignore = args.add_to_ignore
 run_only_on = list(args.run_only_on)
 tp = args.take_profit
@@ -86,12 +92,14 @@ leverage = args.leverage
 qty = args.quantity
 
 # ignore_list = ["MATICUSDT"]
-ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT", "AXSUSDT", "XEMUSDT"]
-
+# ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT", "AXSUSDT", "XEMUSDT"]
+# ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT", "AXSUSDT", "XEMUSDT", "LRCUSDT"] #somehow buggy
+ignore_list = ["HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT",  "XEMUSDT", "LRCUSDT"] #somehow buggy
+already_open = ["NKNUSDT", "BAKEUSDT", "DGBUSDT"] #somehow open
 add_to_ignore = list(add_to_ignore)
 print(add_to_ignore)
 
-
+ignore_list += already_open
 ignore_list += add_to_ignore
 
 def to_datetime_tz(arg, timedelta=-pd.Timedelta("03:00:00"), unit="ms", **kwargs):
@@ -220,19 +228,31 @@ def filter_perps(perps, price_position_range=[0.3, 0.7]):
             if (
                 # price_position <= 0.2 or price_position >= 0.8
                 price_position >= price_position_range[0]
-                or price_position <= price_position_range[1]
+                and price_position <= price_position_range[1]
             ):  # and float(row.priceChangePercent.iloc[-1]) >= -2.0:
                 # if float(row.priceChangePercent.iloc[-1]) >= -1:
                 # print(price_position)
                 screened_symbols.append(row)
+    avg_price_position= sum(np.array(price_positions))/len(price_positions)
+    avg_daily_volatility= sum(np.array(daily_volatilities))/len(daily_volatilities)
+    avg_price_change= sum(np.array(price_change))/len(price_change)
+
     print("MARKET SUMMARY:")                
-    print(f"avg price position: {sum(np.array(price_positions))/len(price_positions)}")
-    print(f"avg daily volatility: {sum(np.array(daily_volatilities))/len(daily_volatilities)}")
-    print(f"avg % price change: {sum(np.array(price_change))/len(price_change)}")
+    print(f"avg price position: {avg_price_position}")
+    print(f"avg daily volatility: {avg_daily_volatility[0]}")
+    print(f"avg % price change: {avg_price_change}")
+    
+    if screen_by_volatility:
+        screened_symbols = [
+            row
+            for row in screened_symbols
+            if row.dailyVolatility.iloc[-1] > avg_daily_volatility[0]
+        ]
+        # print(screened_symbols)
     return screened_symbols
 
 
-def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, positions={}, cpnl={}, update_positions=False):
+def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, positions={}, cpnl={}, update_positions=False, n_positions = 0, ignore = [], run_only_on = []):
     # usdt_pairs = [f"{symbol}T" for symbol in symbols.pair]
     signals = {}
     # df = pd.DataFrame.from_dict({})
@@ -240,15 +260,17 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
     data = {}
     shown_data = []
     order_grids = {}
-    n_positions = 0
+    ignore = ignore_list + ignore
 
     for index, row in symbols.iterrows():
 
         if n_positions >= max_positions:
+            print("n_positions", n_positions)
             break
         
         symbol = row.symbol
-        if symbol in ignore_list:
+
+        if symbol in ignore:
             continue
         if len(run_only_on) > 0 and symbol not in run_only_on:
             continue
@@ -326,7 +348,7 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
                 #     send_arithmetic_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=qty, protect=False, sl=sl, ag=True, is_positioned=False)
                 # else:
                 #     send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, qty=qty, protect=False, sl=sl, is_positioned=False)
-                res, grid_orders = send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=qty, protect=False, sl=sl, is_positioned=False)
+                res, grid_orders = send_order_grid(client, symbol, data[symbol], inf_grid, sup_grid, tp, side, coefs, qty=qty, protect=False, sl=sl, is_positioned=False)
 
                 if (res == -2019
                     and grid_orders is None):
@@ -334,8 +356,8 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
 
                 elif (res == -2019 and
                     grid_orders is not None): #margin not enough to fill the grid
-
-                    print("gridorderstest:", grid_orders["tp"])
+                    if debug:
+                        print("gridorderstest:", grid_orders["tp"])
                     n_positions += 1
                     order_grids[symbol] = grid_orders
                     break       
@@ -345,7 +367,8 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
                     n_positions += 1
                     continue
                 else:
-                    print(grid_orders["tp"])
+                    if debug:
+                        print(grid_orders["tp"])
                     n_positions += 1
                     order_grids[symbol] = grid_orders
                 if plot_screened:
@@ -394,20 +417,13 @@ def prescreen():
     return filtered_perps
 
 def postscreen(filtered_perps, paper=False, positions={}, cpnl={}, update_positions=True):
-    signals, rows, data, positions, cpnl, shown_data, order_grids = generate_market_signals(filtered_perps, coefs, interval, limit=99, paper=paper, positions = positions, cpnl=cpnl, update_positions=update_positions)    
+    signals, rows, data, positions, cpnl, shown_data, order_grids = generate_market_signals(filtered_perps, coefs, interval, limit=99, paper=paper, positions = positions, cpnl=cpnl, update_positions=update_positions, ignore=ignore_list, run_only_on=run_only_on)    
     return signals, rows, data, positions, cpnl, shown_data, order_grids
 
 # def updatescreen(filtered_perps, positions, cpnl):
 #     signals, rows, data, positions, cpnl, shown_data, order_grids = generate_market_signals(filtered_perps, coefs, interval, limit=99, paper=True, positions = positions, cpnl=cpnl, update_positions=False)    
 #     return signals, rows, data, positions, cpnl, shown_data, order_grids
 
-def screen():
-    all_stats = client.futures_ticker()
-    perps = process_all_stats(all_stats)
-    filtered_perps = filter_perps(perps, price_position_range=price_position_range)
-    filtered_perps = pd.concat(filtered_perps, axis=0)
-    signals, rows, data, positions, shown_data, order_grids = generate_market_signals(filtered_perps, coefs, interval, update_positions=True)
-    return signals, rows, data, positions, shown_data, order_grids
 
 # class Printer(Thread):
 #     def __init__(self, data, positions, cpnl, order_grids):
@@ -427,6 +443,17 @@ def screen():
 #             print(self.order_grids)
 #             time.sleep(1)
 
+
+def screen(n_positions=0, ignore=[]):
+    all_stats = client.futures_ticker()
+    perps = process_all_stats(all_stats)
+    filtered_perps = filter_perps(perps, price_position_range=price_position_range)
+    filtered_perps = pd.concat(filtered_perps, axis=0)
+    signals, rows, data, positions, cpnl, shown_data, order_grids = generate_market_signals(filtered_perps, coefs, interval, update_positions=True, n_positions=n_positions, ignore=ignore, run_only_on=run_only_on)
+    return signals, rows, data, positions, cpnl, shown_data, order_grids
+
+
+
 class Cleaner(Thread):
     def __init__(self, client, order_grids):
         Thread.__init__(self)
@@ -441,7 +468,8 @@ class Cleaner(Thread):
     def run(self):
         while (len(self.spairs) > 0 and self.running):
             check_positions(self.client, self.spairs, self.positions, self.order_grids)
-            time.sleep(1)
+            # self.spairs = list(self.order_grids.keys())
+            time.sleep(0.5)
     def stop(self):
         self.running = False
         
@@ -510,7 +538,7 @@ class Printer(Thread):
     def run(self):
         
         while len(self.cleaner.spairs) >= 1:
-            time.sleep(3)
+            time.sleep(8)
             positions_df =pd.DataFrame.from_dict(self.cleaner.positions, orient='index')
             print(f"{len(self.cleaner.spairs)} positions open")
             if len(self.cleaner.spairs) > 0:
@@ -519,32 +547,23 @@ class Printer(Thread):
         print("""
         All positions closed.
         Cleaning stuff.
-        Wait for 20 seconds."""
+        Wait for 5 seconds."""
         )
 
         
         self.cleaner.stop()
         self.stop()
-        time.sleep(20)
+        time.sleep(5)
 
     def stop(self):
         self.running = False
 
-def print_positions(cleaner):
-    while len(cleaner.spairs) >= 1:
-        time.sleep(3)
-        positions_df =pd.DataFrame.from_dict(cleaner.positions, orient='index')
-        print(f"{len(cleaner.spairs)} positions open")
-        if len(cleaner.spairs) > 0:
-            print(positions_df[["symbol", "positionAmt", "notional", "entryPrice", "markPrice", "unRealizedProfit", "liquidationPrice", "leverage",  "marginType"]])
-
-
 class Checker(Thread):
     def __init__(self, cleaner, printer):
         Thread.__init__(self)
+        self.setDaemon(True)
         self.cleaner = cleaner
         self.printer = printer
-        self.daemon = True
         self.running = True
         # self.reescreen = False
         self.start()
@@ -553,11 +572,15 @@ class Checker(Thread):
         while self.running:
             
             print(f"""Checking cleaner and printer statuses... 
-            Cleaner is running:: {self.cleaner.running}
-            Printer is running:: {self.printer.running}
+            Cleaner is running:: {self.cleaner.running if self.cleaner is not None else None}
+            Printer is running:: {self.printer.running if self.printer is not None else None}
             """)
-
-            if (
+            if (self.cleaner is None 
+                or self.printer is None):
+                print("Reescreening...")
+                self.cleaner, self.printer = main()
+                time.sleep(3)
+            elif (
                 (not self.cleaner.running) 
                 and (not self.printer.running)
                 and (not run_once)
@@ -566,6 +589,15 @@ class Checker(Thread):
                 print("Reescreening...")
                 self.cleaner, self.printer = main()
                 time.sleep(10)
+            elif len(self.cleaner.spairs) >= 1 and len(self.cleaner.spairs) < max_positions:
+                
+                signals, rows, data, positions, cpnl, shown_data, order_grids = screen(n_positions = len(self.cleaner.spairs), ignore=self.cleaner.spairs)
+                for symbol in order_grids:
+                    self.cleaner.order_grids[symbol] = order_grids[symbol]
+                    if symbol not in self.cleaner.spairs:
+                        self.cleaner.spairs.append(symbol)
+                # self.cleaner.order_grids, self.cleaner.spairs = order_grids, list(order_grids.keys())
+                time.sleep(15)
             elif run_once:
                 self.stop()
             else:    
@@ -605,12 +637,20 @@ reescreen = False
 if __name__ == "__main__":
     data = {}
     runs = 0
-    ret = main()
-    cleaner, printer = ret[0], ret[1]
+    # ret = main()
+    # cleaner, printer = ret[0], ret[1]
+
+    # while (cleaner is None 
+    #     or printer is None):
+    #         ret = main()
+    #         cleaner, printer = ret[0], ret[1]
+
     time.sleep(5)
+    cleaner, printer = None, None
     checker = Checker(cleaner, printer)
     print(cleaner, printer, checker)
-    
+
+
     # def checker_callback(cleaner, printer):
     #     while True:
     #         if not (cleaner.running or printer.running):

@@ -6,6 +6,8 @@ from binance.client import Client
 from binance.enums import *
 from binance.exceptions import BinanceAPIException
 import os
+import argparse
+
 
 # %%
 
@@ -22,7 +24,7 @@ def change_leverage_and_margin(leverage, margin_type="ISOLATED"):
     symbols = list(filters.keys())
     #%%
     # symbol=symbols[0]
-    # client.futures_change_leverage(symbol=symbol, leverage=17)
+    # client.futures_change_leverage(symbol=symbol, leverage=30)
     # client.futures_change_margin_type(symbol=symbol, marginType="ISOLATED")
     # %%
 
@@ -43,6 +45,15 @@ def change_leverage_and_margin(leverage, margin_type="ISOLATED"):
         margin type: {positionInfo['marginType']}
         leverage: {positionInfo['leverage']}""") 
 
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-L", "--leverage", type=int, default=17)
+    parser.add_argument("-mt", "--margin_type", type=str, default="ISOLATED")
+    args = parser.parse_args()
+    leverage = args.leverage
+    margin_type = args.margin_type
+    change_leverage_and_margin(leverage, margin_type = margin_type)
 
     
     

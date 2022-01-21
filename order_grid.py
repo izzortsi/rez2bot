@@ -33,12 +33,12 @@ def apply_symbol_filters(filters, base_price, qty=1.2):
     qty_precision = int(filters["quantityPrecision"])
     min_qty = float(filters["minQty"])
     step_size = float(filters["tickSize"])
-    print("price_precision", price_precision, "qty_precision", qty_precision, "min_qty", min_qty, "step_size", step_size)
+    # print("price_precision", price_precision, "qty_precision", qty_precision, "min_qty", min_qty, "step_size", step_size)
     minNotional = 7
     min_qty = max(minNotional/base_price, min_qty)
-    print("minqty:", min_qty)
+    # print("minqty:", min_qty)
     order_size = qty * min_qty
-    print("ordersize", order_size)
+    # print("ordersize", order_size)
 
     return price_precision, qty_precision, min_qty, order_size, step_size
 
@@ -59,19 +59,30 @@ def compute_exit(entry_price, target_profit, side, entry_fee=0.04, exit_fee=0.04
 
 
 
-def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1, sl=None, protect=False, is_positioned=False):
+def send_order_grid(client, symbol, data, inf_grid, sup_grid, tp, side, coefs, qty=1.1, sl=None, protect=False, is_positioned=False):
     # print(inf_grid)
     # grid_orders = []
+    bands_through = data["signals"]
+    print(bands_through)
+    bands_to_enter = []
+    enter_from_band = None
+    for i, passed_band in enumerate(bands_through):
+        if passed_band == 0:
+            bands_to_enter.append(i)
+    enter_from_band = bands_to_enter[0]
+    print(enter_from_band)
+    print(bands_to_enter)
     grid_orders = dict(entry = None, tp = None, sl = None, grid = [])
-    grid_entries = [band.values[-1] for band in inf_grid] if side == 1 else [band.values[-1] for band in sup_grid]
-
+    inf_grid[enter_from_band:]
+    grid_entries = [band.values[-1] for band in inf_grid[enter_from_band:]] if side == 1 else [band.values[-1] for band in sup_grid[enter_from_band:]]
+    print(grid_entries)
     if side == -1:
         side = "SELL"
         counterside = "BUY"
     elif side == 1:
         side = "BUY"
         counterside = "SELL"
-    print(grid_entries)
+    print("grid entries:", grid_entries)
     filters = get_filters()
     symbolFilters = filters[symbol]
     # inf_grid
@@ -111,11 +122,11 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
         entry_price = float(position[0]["entryPrice"])
         mark_price = float(position[0]["markPrice"])
         position_qty = abs(float(position[0]["positionAmt"]))
-        print(json.dumps(position[0], indent=2))
+        # print(json.dumps(position[0], indent=2))
         
-        print(f"""
-        grid_entries = {dict({f'band_{i}': grid_entry for i, grid_entry in enumerate(grid_entries)})}
-        """)
+        # print(f"""
+        # grid_entries = {dict({f'band_{i}': grid_entry for i, grid_entry in enumerate(grid_entries)})}
+        # """)
 
         
         for i, entry in enumerate(grid_entries):
@@ -127,8 +138,8 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
             entry = round_step_size(entry, step_size)
 
             formatted_grid_entry_price = price_formatter(entry, price_precision)
-            formatted_order_size = qty_formatter(order_size*coefs[i]*qty**i, qty_precision)
-            print(formatted_grid_entry_price)
+            formatted_order_size = qty_formatter(order_size*coefs[i+enter_from_band]*qty**i, qty_precision)
+            # print(formatted_grid_entry_price)
             try:
                 grid_order = client.futures_create_order(
                 symbol=symbol,
@@ -164,12 +175,12 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
         )
 
 
-        print(
-            f"""price: {entry_price}
+        # print(
+        #     f"""price: {entry_price}
 
-                tp_price: {formatted_tp_price}
-                """
-        )
+        #         tp_price: {formatted_tp_price}
+        #         """
+        # )
         try:
             tp_order_mkt = client.futures_create_order(
                 symbol=symbol,
@@ -194,7 +205,7 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
                     exit_price,
                     price_precision,
                 )
-                print(formatted_sl_price)
+                # print(formatted_sl_price)
                 try:
                     sl_order_mkt = client.futures_create_order(
                         symbol=symbol,
@@ -249,11 +260,11 @@ def send_tpsl(client, symbol, tp, sl, side, protect=False):
         price_precision,
     )
 
-    print(
-        f"""price: {entry_price}
-            tp_price: {formatted_tp_price}
-            """
-    )
+    # print(
+    #     f"""price: {entry_price}
+    #         tp_price: {formatted_tp_price}
+    #         """
+    # )
     try:
         tp_order_mkt = client.futures_create_order(
             symbol=symbol,
