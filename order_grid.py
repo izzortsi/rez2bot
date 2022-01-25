@@ -143,7 +143,8 @@ def send_order_grid(client, symbol, data, inf_grid, sup_grid, tp, side, coefs, q
             entry = round_step_size(entry, step_size)
 
             formatted_grid_entry_price = price_formatter(entry, price_precision)
-            formatted_order_size = qty_formatter(order_size*coefs[i+enter_from_band]*qty**i, qty_precision)
+            # formatted_order_size = qty_formatter(order_size*coefs[i+enter_from_band]*qty**i, qty_precision)
+            formatted_order_size = qty_formatter(order_size*coefs[i+enter_from_band]*qty, qty_precision)
             # print``(formatted_grid_entry_price)
             try:
                 grid_order = client.futures_create_order(
@@ -209,7 +210,7 @@ def send_order_grid(client, symbol, data, inf_grid, sup_grid, tp, side, coefs, q
                         )
                 else:
                     exit_price = round_step_size(
-                        compute_exit(entry_price, sl*2, side=counterside), 
+                        compute_exit(entry_price, sl*1.5, side=counterside), 
                         step_size
                         )
                     
