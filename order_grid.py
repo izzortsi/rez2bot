@@ -69,12 +69,17 @@ def send_order_grid(client, symbol, data, inf_grid, sup_grid, tp, side, coefs, q
     for i, passed_band in enumerate(bands_through):
         if passed_band == 0:
             bands_to_enter.append(i)
-    enter_from_band = bands_to_enter[0]
+    if len(bands_to_enter) > 0:
+        enter_from_band = bands_to_enter[0]
+
     print(enter_from_band)
     print(bands_to_enter)
     grid_orders = dict(entry = None, tp = None, sl = None, grid = [])
-    inf_grid[enter_from_band:]
-    grid_entries = [band.values[-1] for band in inf_grid[enter_from_band:]] if side == 1 else [band.values[-1] for band in sup_grid[enter_from_band:]]
+    if enter_from_band is not None:
+        inf_grid[enter_from_band:]
+        grid_entries = [band.values[-1] for band in inf_grid[enter_from_band:]] if side == 1 else [band.values[-1] for band in sup_grid[enter_from_band:]]
+    else:
+        grid_entries = []        
     print(grid_entries)
     if side == -1:
         side = "SELL"
@@ -130,28 +135,28 @@ def send_order_grid(client, symbol, data, inf_grid, sup_grid, tp, side, coefs, q
 
         
         for i, entry in enumerate(grid_entries):
-            if i == 0:
-                band_diff = abs(entry - entry_price) 
-            else:
-                band_diff = abs(entry - grid_entries[i-1]) 
+#            if i == 0:
+#                band_diff = abs(entry - entry_price) 
+#            else:
+#                band_diff = abs(entry - grid_entries[i-1]) 
 
             entry = round_step_size(entry, step_size)
 
             formatted_grid_entry_price = price_formatter(entry, price_precision)
             formatted_order_size = qty_formatter(order_size*coefs[i+enter_from_band]*qty**i, qty_precision)
-            # print(formatted_grid_entry_price)
+            # print``(formatted_grid_entry_price)
             try:
                 grid_order = client.futures_create_order(
-                symbol=symbol,
-                side=side,
-                type="LIMIT",
-                price=formatted_grid_entry_price,
-                workingType="CONTRACT_PRICE",
-                quantity=formatted_order_size,
-                reduceOnly=False,
-                priceProtect=False,
-                timeInForce="GTC",
-                # newOrderRespType="RESULT",
+                    symbol=symbol,
+                    side=side,
+                    type="LIMIT",
+                    price=formatted_grid_entry_price,
+                    workingType="CONTRACT_PRICE",
+                    quantity=formatted_order_size,
+                    reduceOnly=False,
+                    priceProtect=False,
+                    timeInForce="GTC",
+                    # newOrderRespType="RESULT",
                 )
                 grid_orders["grid"].append(grid_order)
             except BinanceAPIException as error:
@@ -197,10 +202,17 @@ def send_order_grid(client, symbol, data, inf_grid, sup_grid, tp, side, coefs, q
             print(f"take profit order, ", error)
         finally:
             if sl is not None:
-                exit_price = round_step_size(
-                    compute_exit(grid_entries[-1], sl, side=counterside), 
-                    step_size
-                )
+                if grid_entries[-1] is not None:
+                    exit_price = round_step_size(
+                        compute_exit(grid_entries[-1], sl, side=counterside), 
+                        step_size
+                        )
+                else:
+                    exit_price = round_step_size(
+                        compute_exit(entry_price, sl*2, side=counterside), 
+                        step_size
+                        )
+                    
                 formatted_sl_price = price_formatter(
                     exit_price,
                     price_precision,
