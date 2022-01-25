@@ -41,7 +41,7 @@ def user_ws_callback(msg):
                     entry price: {position_data["ep"]}""")
                 position_amount = float(position_data["pa"])
                 entry_price = float(position_data["ep"])
-                new_pt = 
+                new_tp = None
         else:
             print(msg["a"]["m"])
             # symbol = order_data["s"]
@@ -54,7 +54,7 @@ def main():
 
     # twm.start_futures_socket(callback=lambda msg: print("twm's got a message:", msg))
     twm.start_futures_socket(callback=user_ws_callback)
-
+    twm.join()
 
 
 # %%
