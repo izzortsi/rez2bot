@@ -203,7 +203,7 @@ def send_order_grid(client, symbol, data, inf_grid, sup_grid, tp, side, coefs, q
             print(f"take profit order, ", error)
         finally:
             if sl is not None:
-                if grid_entries[-1] is not None:
+                if len(grid_entries) > 0:
                     exit_price = round_step_size(
                         compute_exit(grid_entries[-1], sl, side=counterside), 
                         step_size
