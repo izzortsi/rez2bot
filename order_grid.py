@@ -144,7 +144,8 @@ def send_order_grid(client, symbol, data, inf_grid, sup_grid, tp, side, coefs, q
 
             formatted_grid_entry_price = price_formatter(entry, price_precision)
             # formatted_order_size = qty_formatter(order_size*coefs[i+enter_from_band]*qty**i, qty_precision)
-            formatted_order_size = qty_formatter(order_size*coefs[i+enter_from_band]*qty, qty_precision)
+            # formatted_order_size = qty_formatter(order_size*coefs[i+enter_from_band]*qty, qty_precision)
+            formatted_order_size = qty_formatter(order_size*coefs[i+enter_from_band], qty_precision)
             # print``(formatted_grid_entry_price)
             try:
                 grid_order = client.futures_create_order(
