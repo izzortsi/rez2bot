@@ -575,6 +575,7 @@ class Printer(Thread):
     def stop(self):
         self.running = False
 
+
 class Checker(Thread):
     def __init__(self, cleaner, printer):
         Thread.__init__(self)
