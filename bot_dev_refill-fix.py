@@ -84,7 +84,7 @@ check_positions_properties = args.check_positions_properties
 max_positions = args.max_positions
 run_once = args.run_once
 screen_by_volatility = args.screen_by_volatility
-add_to_ignore = args.add_to_ignore
+add_to_ignore = list(args.add_to_ignore)
 run_only_on = list(args.run_only_on)
 tp = args.take_profit
 sl = args.stop_loss
@@ -95,13 +95,17 @@ qty = args.quantity
 # ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT", "AXSUSDT", "XEMUSDT"]
 ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT", "AXSUSDT", "XEMUSDT", "LRCUSDT"] #somehow buggy
 # ignore_list = ["HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT",  "XEMUSDT", "LRCUSDT"] #somehow buggy
-# already_open = ["NKNUSDT", "BAKEUSDT", "DGBUSDT"] #somehow open
 already_open = [] #somehow open
-add_to_ignore = list(add_to_ignore)
-print(add_to_ignore)
+# already_open = ["NKNUSDT", "BAKEUSDT", "DGBUSDT"] #somehow open
+only_on = []
+# add_to_ignore = list(add_to_ignore)
+# print(add_to_ignore)
 
+run_only_on += only_on
 ignore_list += already_open
 ignore_list += add_to_ignore
+print(f"ignore list: {ignore_list}")
+print(f"running only on: {run_only_on}")
 
 def to_datetime_tz(arg, timedelta=-pd.Timedelta("03:00:00"), unit="ms", **kwargs):
     """
