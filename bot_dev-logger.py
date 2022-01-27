@@ -3,6 +3,7 @@ from order_grid import *
 from plot_functions import *
 from ring_buffer import RingBuffer
 from change_leverage_and_margin_type import change_leverage_and_margin
+from setup_logger import logger
 # from order_grid_arithmetic import send_arithmetic_order_grid
 from binance.client import Client
 from binance.enums import *
