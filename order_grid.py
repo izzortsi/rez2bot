@@ -4,6 +4,7 @@ from binance.client import Client
 from binance.enums import *
 from binance.exceptions import *
 from binance.helpers import round_step_size
+from setup_logger import logger
 import json
 import os
 import numpy as np
