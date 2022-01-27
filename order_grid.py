@@ -101,7 +101,9 @@ def send_order_grid(client, symbol, data, inf_grid, sup_grid, tp, side, coefs, q
     qty_formatter = lambda ordersize, qty_precision: f"{float(ordersize):.{qty_precision}f}"
     # price_formatter = lambda price, price_precision: f"{float(price):.{price_precision}f}"
     price_formatter = lambda price, price_precision: f"{float(price):.{price_precision}f}"
-    formatted_order_size = qty_formatter(order_size, qty_precision)
+    entry_order_size = order_size*2
+    formatted_order_size = qty_formatter(entry_order_size, qty_precision)
+    # formatted_order_size = qty_formatter(order_size, qty_precision)
     
     try:
         new_position = client.futures_create_order(
@@ -202,6 +204,9 @@ def send_order_grid(client, symbol, data, inf_grid, sup_grid, tp, side, coefs, q
             )
             grid_orders["tp"] = tp_order_mkt    
         except BinanceAPIException as error:
+            logger.info(
+                f"{symbol}: take profit order, {error} at line 194; {formatted_tp_price if error.code == -4006  else None}"
+                )
             print(f"take profit order, ", error)
         finally:
             if sl is not None:

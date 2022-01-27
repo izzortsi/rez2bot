@@ -514,13 +514,20 @@ def check_positions(client, spairs, positions, order_grids):
                     last entry price: {last_entry_price}
                     difference: {abs(entry_price - last_entry_price) if last_entry_price is not None else None}""")
             print(f"changed tp and sl for {symbol}'s position")
-            tp_id = symbol_grid["tp"]["orderId"]
+            try:
+                tp_id = symbol_grid["tp"]["orderId"]
+            except BinanceAPIException as e:
+                logger.info(
+                    f"{symbol}: {e} at line 517"
+                )
             # sl_id = symbol_grid["sl"]["orderId"]
             try:
                 client.futures_cancel_order(symbol=symbol, orderId=tp_id)
                 # client.futures_cancel_order(symbol=symbol, orderId=sl_id)
             except BinanceAPIException as e:
-                print(e)
+                logger.info(
+                    f"{symbol}: {e} at line 524"
+                )
                 if e.code == -2011:
                     new_tp, new_sl = send_tpsl(client, symbol, tp, None, side, protect=False)
                 elif e.code == -2021: #APIError(code=-2021): Order would immediately trigger.
@@ -529,7 +536,12 @@ def check_positions(client, spairs, positions, order_grids):
             else:
                 new_tp, new_sl = send_tpsl(client, symbol, tp, None, side, protect=False)
                 # new_tp, new_sl = send_tpsl(client, symbol, tp, sl, side, protect=False)
-                symbol_grid["tp"]["orderId"] = new_tp["orderId"]
+                try:
+                    symbol_grid["tp"]["orderId"] = new_tp["orderId"]
+                except BinanceAPIException as e:
+                            logger.info(
+                        f"{symbol}: {e} at line 539"
+                    )
                 # symbol_grid["sl"]["orderId"] = new_sl["orderId"]
             time.sleep(1.5)
 class Printer(Thread):
