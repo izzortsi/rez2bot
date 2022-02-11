@@ -27,7 +27,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-pt", "--paper_trade", type=bool, default=True)
 parser.add_argument("-tf", "--timeframe", type=str, default="1h")
 parser.add_argument("-ppl", "--price_posision_low", type=float, default=0.0)
-parser.add_argument("-pph", "--price_position_high", type=float, default=0.0)
+parser.add_argument("-pph", "--price_position_high", type=float, default=1.0)
 
 parser.add_argument("-wl", "--window_length", type=int, default=52)
 parser.add_argument("-wa", "--atr_window_length", type=int, default=8)
@@ -41,7 +41,7 @@ parser.add_argument("-e", nargs="+", help="my help message", type=float,
                         # default=(1.16, 1.4, 1.64, 1.88, 2.12, 2.36, 2.6, 2.84)) # 15m (maybe 5min)
                         
                         # default=(0.86, 1.0, 1.146, 1.292, 1.364, 1.5, 1.618, 1.792, 1.854, 2.0)) # 1h (maybe 5min)
-parser.add_argument("--max_positions", type=int, default=3)
+parser.add_argument("--max_positions", type=int, default=6)
 parser.add_argument("--debug", type=bool, default=False)
 parser.add_argument("--momentum", type=bool, default=False)
 parser.add_argument("--open_grids", type=bool, default=False)
@@ -56,7 +56,7 @@ parser.add_argument("--run_only_on", nargs="+", help="my help message", type=str
 parser.add_argument("-tp", "--take_profit", type=float, default=0.14)                
 parser.add_argument("-sl", "--stop_loss", type=float, default=0.12)                
 parser.add_argument("-q", "--quantity", type=float, default=1.1)
-parser.add_argument("-lev", "--leverage", type=int, default=17)                
+parser.add_argument("-lev", "--leverage", type=int, default=10)                
 
 
 args = parser.parse_args()
@@ -95,6 +95,7 @@ qty = args.quantity
 # ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT", "AXSUSDT", "XEMUSDT"]
 ignore_list = ["AVAXUSDT", "SOLUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT", "AXSUSDT", "XEMUSDT", "LRCUSDT"] #somehow buggy
 # ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT", "AXSUSDT", "XEMUSDT", "LRCUSDT"] #somehow buggy
+# ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT", "AXSUSDT", "XEMUSDT", "LRCUSDT", "1000BTTCUSDT", "STMXUSDT"] #somehow buggy
 # ignore_list = ["HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT",  "XEMUSDT", "LRCUSDT"] #somehow buggy
 already_open = [] #somehow open
 # already_open = ["NKNUSDT", "BAKEUSDT", "DGBUSDT"] #somehow open
