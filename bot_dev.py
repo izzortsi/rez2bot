@@ -93,7 +93,9 @@ qty = args.quantity
 
 # ignore_list = ["MATICUSDT"]
 # ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT", "AXSUSDT", "XEMUSDT"]
-ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT", "AXSUSDT", "XEMUSDT", "LRCUSDT", "1000BTTCUSDT", "STMXUSDT"] #somehow buggy
+ignore_list = ["AVAXUSDT", "SOLUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT", "AXSUSDT", "XEMUSDT", "LRCUSDT"] #somehow buggy
+# ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT", "AXSUSDT", "XEMUSDT", "LRCUSDT"] #somehow buggy
+# ignore_list = ["AVAXUSDT", "SOLUSDT", "LUNAUSDT", "AAVEUSDT", "HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT", "AXSUSDT", "XEMUSDT", "LRCUSDT", "1000BTTCUSDT", "STMXUSDT"] #somehow buggy
 # ignore_list = ["HNTUSDT", "YFIUSDT", "MASKUSDT", "IOTXUSDT", "BTCDOMUSDT",  "XEMUSDT", "LRCUSDT"] #somehow buggy
 already_open = [] #somehow open
 # already_open = ["NKNUSDT", "BAKEUSDT", "DGBUSDT"] #somehow open
