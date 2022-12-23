@@ -1,7 +1,7 @@
 # %%
 
-from binance import Client, ThreadedWebsocketManager
-from binance.enums import *
+from binance.um_futures import UMFutures as Client
+
 from threading import Thread
 
 import numpy as np
@@ -13,7 +13,7 @@ import os
 
 api_key = os.environ.get("API_KEY") 
 api_secret = os.environ.get("API_SECRET")
-client = Client(api_key, api_secret)
+client = Client(key = api_key, secret = api_secret)
 
 
 def to_datetime_tz(arg, timedelta=-pd.Timedelta("03:00:00"), unit="ms", **kwargs):
@@ -136,7 +136,7 @@ buffer = RingBuffer(window_length, interval, data_window)
 
 
 # socket manager using threads
-twm = ThreadedWebsocketManager()
+twm ()
 twm.start()
 
 
@@ -493,8 +493,3 @@ fig.update_layout(hovermode="x unified")
 
 fig.update_traces(xaxis='x')
 fig.show()
-!!
-
-!!
-
-!!

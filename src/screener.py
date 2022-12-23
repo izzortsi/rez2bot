@@ -1,7 +1,6 @@
 # %%
 
-from binance import Client, ThreadedWebsocketManager
-from binance.enums import *
+from binance.um_futures import UMFutures as Client
 from threading import Thread
 import numpy as np
 import pandas as pd
@@ -86,15 +85,15 @@ class RingBuffer:
         #                 )
 
 
-interval = Client.KLINE_INTERVAL_1HOUR
+interval = "1h"
 fromdate = "20 Dec, 2021"
-window_length = 49
+window_length = 64
 
 import pandas as pd
 from datetime import datetime
 
 
-def compute_indicators(klines, w1=12, w2=26, w3=9, w_atr=5, step=0.4):
+def compute_indicators(klines, w1=12, w2=26, w3=9, w_atr=7, step=0.4):
     # compute macd
     macd = pd.Series(
         klines["close"].ewm(span=w1, min_periods=w1).mean()
@@ -195,7 +194,7 @@ def generate_market_signals(symbols, interval, fromdate):
         symbol = row.symbol
         # print(symbol)
         # print(type(symbol))
-        klines = client.futures_historical_klines(symbol, interval, fromdate)
+        klines = client.continuous_klines(symbol, "PERPETUAL", interval, startTime = fromdate)
         klines = process_futures_klines(klines)
 
         data_window = klines.tail(window_length)
@@ -231,7 +230,7 @@ def generate_market_signals(symbols, interval, fromdate):
 
 # %%
 def screen():
-    all_stats = client.futures_ticker()
+    all_stats = client.ticker_24hr_price_change()
     perps = process_all_stats(all_stats)
     filtered_perps = filter_perps(perps)
     filtered_perps = pd.concat(filtered_perps, axis=0)
@@ -240,6 +239,7 @@ def screen():
 
 
 # %%
+signals, rows = screen()
 # signals
 
 # %%
@@ -249,7 +249,6 @@ def screen():
 
 # %%
 
-# signals, rows = screen()
 # %%
 
 # %%
@@ -393,3 +392,5 @@ def screen():
 # #%%
 
 # #%%
+
+# %%

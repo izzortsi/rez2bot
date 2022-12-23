@@ -1,6 +1,6 @@
 # %%
-from binance import Client, ThreadedWebsocketManager
-from binance.enums import *
+
+from binance.um_futures import UMFutures as Client
 from threading import Thread
 from datetime import datetime
 import numpy as np
@@ -18,7 +18,7 @@ parser.add_argument("-tf", "--timeframe", default="30m", type=str)
 parser.add_argument("-wl", "--window_length", default=52, type=int)
 parser.add_argument("-ppl", "--price_position_low", default = 0.15, type=float)
 parser.add_argument("-pph", "--price_position_high", default = 0.85, type=float)
-parser.add_argument("-fd", "--fromdate", default="20 Dec, 2021", type=str)
+parser.add_argument("-fd", "--fromdate", default="1 Dec, 2022", type=str)
 args = parser.parse_args()
 # interval = Client.KLINE_INTERVAL_15MINUTE
 fromdate = args.fromdate
@@ -258,7 +258,7 @@ def generate_market_signals(symbols, interval, fromdate):
         symbol = row.symbol
         # print(symbol)
         # print(type(symbol))
-        klines = client.futures_historical_klines(symbol, interval, fromdate)
+        klines = client.continuous_klines(symbol, "PERPETUAL", interval, startTime = fromdate)
         klines = process_futures_klines(klines)
         # print(f"len klines: {len(klines)}")
         data_window = klines.tail(window_length)
@@ -317,7 +317,7 @@ def plot_symboL_atr_grid(symbol, data):
     fig.show()
 
 def screen():
-    all_stats = client.futures_ticker()
+    all_stats = client.ticker_24hr_price_change()
     perps = process_all_stats(all_stats)
     filtered_perps = filter_perps(perps, price_position_range=price_position_range)
     filtered_perps = pd.concat(filtered_perps, axis=0)
