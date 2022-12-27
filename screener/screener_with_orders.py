@@ -1,8 +1,7 @@
 # %%
 from order_grid import *
 # from order_grid_arithmetic import send_arithmetic_order_grid
-from binance.client import Client
-from binance.enums import *
+from binance.um_futures import UMFutures as Client
 from threading import Thread, local
 from datetime import datetime
 from plotly.subplots import make_subplots
@@ -14,13 +13,13 @@ import os
 import pandas as pd
 import argparse
 import plotly.graph_objects as go
-
+# client.get_position_risk(symbol=symbol)
 # %%
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-pt", "--paper_trade", type=bool, default=True)
-parser.add_argument("-tf", "--timeframe", type=str, default="15m")
+parser.add_argument("-tf", "--timeframe", type=str, default="4h")
 # parser.add_argument("-fd", "--fromdate", type=str, default="12 hour ago")
 parser.add_argument("-ppl", "--price_posision_low", type=float, default=0.5)
 parser.add_argument("-pph", "--price_position_high", type=float, default=0.5)
@@ -29,9 +28,9 @@ parser.add_argument("-pph", "--price_position_high", type=float, default=0.5)
 #                         help="my help message", type=float,
 #                         default=None)
 parser.add_argument("-wl", "--window_length", type=int, default=52)
-parser.add_argument("-wa", "--atr_window_length", type=int, default=8)
+parser.add_argument("-wa", "--atr_window_length", type=int, default=7)
 parser.add_argument("-e", nargs="+", help="my help message", type=float,
-                        default=(1.364, 1.618, 1.854, 2.0, 2.364))
+                        default=(0.618, 1.364, 1.618))
 parser.add_argument("--debug", type=bool, default=False)
 parser.add_argument("--momentum", type=bool, default=False)
 parser.add_argument("--open_grids", type=bool, default=False)
@@ -39,10 +38,10 @@ parser.add_argument("--open_grids", type=bool, default=False)
 parser.add_argument("-ag", "--arithmetic_grid", type=bool, default=False)
 parser.add_argument("--plot_screened", type=bool, default=False)
 
-parser.add_argument("-tp", "--take_profit", type=float, default=0.33)                
-parser.add_argument("-sl", "--stop_loss", type=float, default=0.33)                
-parser.add_argument("-q", "--quantity", type=float, default=1.1)
-parser.add_argument("-lev", "--leverage", type=int, default=17)                
+parser.add_argument("-tp", "--take_profit", type=float, default=0.31)                
+parser.add_argument("-sl", "--stop_loss", type=float, default=0.45)                
+parser.add_argument("-q", "--quantity", type=float, default=1.5)
+parser.add_argument("-lev", "--leverage", type=int, default=10)                
 
 args = parser.parse_args()
 
@@ -270,7 +269,7 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
         symbol = row.symbol
         # print(symbol)
         # print(type(symbol))
-        klines = client.futures_klines(symbol=symbol, interval=interval, limit=limit)
+        klines = client.continuous_klines(symbol, "PERPETUAL", interval=interval, limit=limit)
         klines = process_futures_klines(klines)
         # print(f"len klines: {len(klines)}")
         data_window = klines.tail(window_length)
@@ -310,7 +309,7 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
             # print(f"local_volatility: {local_volatility}")
             # print(f"global_volatility: {global_volatility}")
             # print(f"hist: {hist.iloc[-1]}")
-            print(f"atr_grid: {atr_grid.iloc[-1]}")
+            print(f"atr_grid: {atr_grid[-1]}")
             print(f"\n")
 
 
@@ -398,7 +397,8 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
     return signals, df, data, positions, cpnl, shown_data
 
 def prescreen():
-    all_stats = client.futures_ticker()
+    all_stats = client.ticker_24hr_price_change()
+
     perps = process_all_stats(all_stats)
     filtered_perps = filter_perps(perps, price_position_range=price_position_range)
     filtered_perps = pd.concat(filtered_perps, axis=0)
@@ -413,7 +413,8 @@ def updatescreen(positions, cpnl):
     return signals, rows, data, positions, cpnl, shown_data
 
 def screen():
-    all_stats = client.futures_ticker()
+    all_stats = client.ticker_24hr_price_change()
+
     perps = process_all_stats(all_stats)
     filtered_perps = filter_perps(perps, price_position_range=price_position_range)
     filtered_perps = pd.concat(filtered_perps, axis=0)

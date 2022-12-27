@@ -4,8 +4,8 @@ from plot_functions import *
 from ring_buffer import RingBuffer
 from change_leverage_and_margin_type import change_leverage_and_margin
 # from order_grid_arithmetic import send_arithmetic_order_grid
-from binance.client import Client
-from binance.enums import *
+from binance.um_futures import UMFutures as Client
+from binance.api import BinanceAPIException
 from threading import Thread, local
 from datetime import datetime
 
@@ -426,7 +426,8 @@ def generate_market_signals(symbols, coefs, interval, limit=99, paper=False, pos
     return signals, df, data, positions, cpnl, shown_data, order_grids
 
 def prescreen():
-    all_stats = client.futures_ticker()
+    all_stats = client.ticker_24hr_price_change()
+
     perps = process_all_stats(all_stats)
     filtered_perps = filter_perps(perps, price_position_range=price_position_range)
     filtered_perps = pd.concat(filtered_perps, axis=0)
@@ -441,7 +442,8 @@ def postscreen(filtered_perps, paper=False, positions={}, cpnl={}, update_positi
 #     return signals, rows, data, positions, cpnl, shown_data, order_grids
 
 def screen():
-    all_stats = client.futures_ticker()
+    all_stats = client.ticker_24hr_price_change()
+
     perps = process_all_stats(all_stats)
     filtered_perps = filter_perps(perps, price_position_range=price_position_range)
     filtered_perps = pd.concat(filtered_perps, axis=0)

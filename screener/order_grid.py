@@ -1,9 +1,8 @@
 # %%
 
-from binance.client import Client
-from binance.enums import *
-from binance.exceptions import *
-from binance.helpers import round_step_size
+from binance.um_futures import UMFutures as Client
+from binance.api import ClientError, ServerError, JSONDecodeError
+from helpers import round_step_size
 import json
 import os
 import numpy as np
@@ -98,7 +97,7 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
     
 
     try:
-        new_position = client.futures_create_order(
+        new_position = client.new_order(
             symbol=symbol,
             side=side,
             type="MARKET",
@@ -109,7 +108,7 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
 
         grid_orders["entry"] = new_position
             
-    except BinanceAPIException as error:
+    except ClientError as error:
         
         print("positioning, ", error)    
         if (
@@ -118,7 +117,7 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
             ):
             return error.code
     else:
-        position = client.futures_position_information(symbol=symbol)
+        position = client.get_position_risk(symbol=symbol)
         entry_price = float(position[0]["entryPrice"])
         mark_price = float(position[0]["markPrice"])
         position_qty = abs(float(position[0]["positionAmt"]))
@@ -156,7 +155,7 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
             formatted_order_size = qty_formatter(order_size*coefs[i]*qty**i, qty_precision)
             print(formatted_grid_entry_price)
             try:
-                grid_order = client.futures_create_order(
+                grid_order = client.new_order(
                 symbol=symbol,
                 side=side,
                 type="LIMIT",
@@ -169,7 +168,7 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
                 # newOrderRespType="RESULT",
                 )
                 grid_orders["grid"].append(grid_order)
-            except BinanceAPIException as error:
+            except ClientError as error:
 
                 print(f"grid order {i}, ", error)
 
@@ -197,7 +196,7 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
                 """
         )
         try:
-            # tp_order = client.futures_create_order(
+            # tp_order = client.new_order(
             #     symbol=symbol,
             #     side=counterside,
             #     type="TAKE_PROFIT",
@@ -209,7 +208,7 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
             #     priceProtect=False,
             #     timeInForce="GTC",
             # )
-            tp_order_mkt = client.futures_create_order(
+            tp_order_mkt = client.new_order(
                 symbol=symbol,
                 side=counterside,
                 type="TAKE_PROFIT_MARKET",
@@ -220,7 +219,7 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
                 timeInForce="GTC",
             )
             grid_orders["tp"] = tp_order_mkt    
-        except BinanceAPIException as error:
+        except ClientError as error:
             print(f"take profit order, ", error)
         finally:
             if sl is not None:
@@ -234,7 +233,7 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
                 )
                 print(formatted_sl_price)
                 try:
-                    sl_order_mkt = client.futures_create_order(
+                    sl_order_mkt = client.new_order(
                         symbol=symbol,
                         side=counterside,
                         type="STOP_MARKET",
@@ -245,7 +244,7 @@ def send_order_grid(client, symbol, inf_grid, sup_grid, tp, side, coefs, qty=1.1
                         timeInForce="GTC",
                     )
                     grid_orders["sl"] = sl_order_mkt    
-                except BinanceAPIException as error:
+                except ClientError as error:
                     print(f"stop loss order, ", error)
         if error_code is not None:
             return error_code
@@ -300,7 +299,7 @@ def send_tpsl(client, symbol, tp, sl, side, protect=False):
             """
     )
     try:
-        tp_order_mkt = client.futures_create_order(
+        tp_order_mkt = client.new_order(
             symbol=symbol,
             side=counterside,
             type="TAKE_PROFIT_MARKET",
@@ -310,7 +309,7 @@ def send_tpsl(client, symbol, tp, sl, side, protect=False):
             priceProtect=False,
             timeInForce="GTC",
         )    
-    except BinanceAPIException as error:
+    except ClientError as error:
         print(f"take profit order, ", error)
     finally:
         if sl is not None:
@@ -323,7 +322,7 @@ def send_tpsl(client, symbol, tp, sl, side, protect=False):
             )
             print(formatted_sl_price)
             try:
-                sl_order_mkt = client.futures_create_order(
+                sl_order_mkt = client.new_order(
                     symbol=symbol,
                     side=counterside,
                     type="STOP_MARKET",
@@ -333,7 +332,7 @@ def send_tpsl(client, symbol, tp, sl, side, protect=False):
                     priceProtect=False,
                     timeInForce="GTC",
                 )    
-            except BinanceAPIException as error:
+            except ClientError as error:
                 print(f"stop loss order, ", error)
             else:
                 return tp_order_mkt, sl_order_mkt

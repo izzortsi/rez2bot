@@ -2,7 +2,7 @@
     "BTCUSDT": {
         "pricePrecision": 2,
         "quantityPrecision": 3,
-        "tickSize": "0.01",
+        "tickSize": "0.10",
         "stepSize": "0.001",
         "minQty": "0.001"
     },
@@ -170,7 +170,7 @@
     "THETAUSDT": {
         "pricePrecision": 4,
         "quantityPrecision": 1,
-        "tickSize": "0.0010",
+        "tickSize": "0.0001",
         "stepSize": "0.1",
         "minQty": "0.1"
     },
@@ -191,7 +191,7 @@
     "KNCUSDT": {
         "pricePrecision": 5,
         "quantityPrecision": 0,
-        "tickSize": "0.00100",
+        "tickSize": "0.00010",
         "stepSize": "1",
         "minQty": "1"
     },
@@ -254,7 +254,7 @@
     "WAVESUSDT": {
         "pricePrecision": 4,
         "quantityPrecision": 1,
-        "tickSize": "0.0010",
+        "tickSize": "0.0001",
         "stepSize": "0.1",
         "minQty": "0.1"
     },
@@ -314,13 +314,6 @@
         "stepSize": "0.1",
         "minQty": "0.1"
     },
-    "YFIIUSDT": {
-        "pricePrecision": 1,
-        "quantityPrecision": 3,
-        "tickSize": "0.1",
-        "stepSize": "0.001",
-        "minQty": "0.001"
-    },
     "RUNEUSDT": {
         "pricePrecision": 4,
         "quantityPrecision": 0,
@@ -338,7 +331,7 @@
     "SRMUSDT": {
         "pricePrecision": 4,
         "quantityPrecision": 0,
-        "tickSize": "0.0010",
+        "tickSize": "0.0001",
         "stepSize": "1",
         "minQty": "1"
     },
@@ -352,7 +345,7 @@
     "SOLUSDT": {
         "pricePrecision": 4,
         "quantityPrecision": 0,
-        "tickSize": "0.0100",
+        "tickSize": "0.0010",
         "stepSize": "1",
         "minQty": "1"
     },
@@ -429,7 +422,7 @@
     "RENUSDT": {
         "pricePrecision": 5,
         "quantityPrecision": 0,
-        "tickSize": "0.00010",
+        "tickSize": "0.00001",
         "stepSize": "1",
         "minQty": "1"
     },
@@ -443,7 +436,7 @@
     "NEARUSDT": {
         "pricePrecision": 4,
         "quantityPrecision": 0,
-        "tickSize": "0.0001",
+        "tickSize": "0.0010",
         "stepSize": "1",
         "minQty": "1"
     },
@@ -471,7 +464,7 @@
     "LRCUSDT": {
         "pricePrecision": 5,
         "quantityPrecision": 0,
-        "tickSize": "0.00001",
+        "tickSize": "0.00010",
         "stepSize": "1",
         "minQty": "1"
     },
@@ -506,21 +499,21 @@
     "CTKUSDT": {
         "pricePrecision": 5,
         "quantityPrecision": 0,
-        "tickSize": "0.00100",
+        "tickSize": "0.00010",
         "stepSize": "1",
         "minQty": "1"
     },
     "AXSUSDT": {
         "pricePrecision": 5,
         "quantityPrecision": 0,
-        "tickSize": "0.01000",
+        "tickSize": "0.00100",
         "stepSize": "1",
         "minQty": "1"
     },
     "ALPHAUSDT": {
         "pricePrecision": 5,
         "quantityPrecision": 0,
-        "tickSize": "0.00010",
+        "tickSize": "0.00001",
         "stepSize": "1",
         "minQty": "1"
     },
@@ -552,20 +545,6 @@
         "stepSize": "1",
         "minQty": "1"
     },
-    "BTCBUSD": {
-        "pricePrecision": 1,
-        "quantityPrecision": 3,
-        "tickSize": "0.1",
-        "stepSize": "0.001",
-        "minQty": "0.001"
-    },
-    "AKROUSDT": {
-        "pricePrecision": 5,
-        "quantityPrecision": 0,
-        "tickSize": "0.00001",
-        "stepSize": "1",
-        "minQty": "1"
-    },
     "CHZUSDT": {
         "pricePrecision": 5,
         "quantityPrecision": 0,
@@ -587,13 +566,6 @@
         "stepSize": "1",
         "minQty": "1"
     },
-    "LUNAUSDT": {
-        "pricePrecision": 4,
-        "quantityPrecision": 0,
-        "tickSize": "0.0010",
-        "stepSize": "1",
-        "minQty": "1"
-    },
     "BTSUSDT": {
         "pricePrecision": 5,
         "quantityPrecision": 0,
@@ -609,13 +581,6 @@
         "minQty": "0.1"
     },
     "UNFIUSDT": {
-        "pricePrecision": 3,
-        "quantityPrecision": 1,
-        "tickSize": "0.001",
-        "stepSize": "0.1",
-        "minQty": "0.1"
-    },
-    "DODOUSDT": {
         "pricePrecision": 3,
         "quantityPrecision": 1,
         "tickSize": "0.001",
@@ -741,13 +706,6 @@
         "stepSize": "1",
         "minQty": "1"
     },
-    "BTTUSDT": {
-        "pricePrecision": 6,
-        "quantityPrecision": 0,
-        "tickSize": "0.000001",
-        "stepSize": "1",
-        "minQty": "1"
-    },
     "NKNUSDT": {
         "pricePrecision": 5,
         "quantityPrecision": 0,
@@ -776,13 +734,6 @@
         "stepSize": "1",
         "minQty": "1"
     },
-    "ICPUSDT": {
-        "pricePrecision": 2,
-        "quantityPrecision": 2,
-        "tickSize": "0.01",
-        "stepSize": "0.01",
-        "minQty": "0.01"
-    },
     "BAKEUSDT": {
         "pricePrecision": 4,
         "quantityPrecision": 0,
@@ -797,26 +748,12 @@
         "stepSize": "0.1",
         "minQty": "0.1"
     },
-    "ETHBUSD": {
-        "pricePrecision": 2,
-        "quantityPrecision": 3,
-        "tickSize": "0.01",
-        "stepSize": "0.001",
-        "minQty": "0.001"
-    },
     "BTCDOMUSDT": {
         "pricePrecision": 1,
         "quantityPrecision": 3,
         "tickSize": "0.1",
         "stepSize": "0.001",
         "minQty": "0.001"
-    },
-    "KEEPUSDT": {
-        "pricePrecision": 4,
-        "quantityPrecision": 0,
-        "tickSize": "0.0001",
-        "stepSize": "1",
-        "minQty": "1"
     },
     "TLMUSDT": {
         "pricePrecision": 4,
@@ -825,38 +762,10 @@
         "stepSize": "1",
         "minQty": "1"
     },
-    "BNBBUSD": {
-        "pricePrecision": 3,
-        "quantityPrecision": 2,
-        "tickSize": "0.010",
-        "stepSize": "0.01",
-        "minQty": "0.01"
-    },
-    "ADABUSD": {
-        "pricePrecision": 5,
-        "quantityPrecision": 0,
-        "tickSize": "0.00010",
-        "stepSize": "1",
-        "minQty": "1"
-    },
-    "XRPBUSD": {
-        "pricePrecision": 4,
-        "quantityPrecision": 1,
-        "tickSize": "0.0001",
-        "stepSize": "0.1",
-        "minQty": "0.1"
-    },
     "IOTXUSDT": {
         "pricePrecision": 5,
         "quantityPrecision": 0,
         "tickSize": "0.00001",
-        "stepSize": "1",
-        "minQty": "1"
-    },
-    "DOGEBUSD": {
-        "pricePrecision": 6,
-        "quantityPrecision": 0,
-        "tickSize": "0.000010",
         "stepSize": "1",
         "minQty": "1"
     },
@@ -884,7 +793,7 @@
     "MASKUSDT": {
         "pricePrecision": 4,
         "quantityPrecision": 0,
-        "tickSize": "0.0001",
+        "tickSize": "0.0010",
         "stepSize": "1",
         "minQty": "1"
     },
@@ -894,20 +803,6 @@
         "tickSize": "0.0001",
         "stepSize": "1",
         "minQty": "1"
-    },
-    "SOLBUSD": {
-        "pricePrecision": 4,
-        "quantityPrecision": 0,
-        "tickSize": "0.0100",
-        "stepSize": "1",
-        "minQty": "1"
-    },
-    "FTTBUSD": {
-        "pricePrecision": 3,
-        "quantityPrecision": 1,
-        "tickSize": "0.001",
-        "stepSize": "0.1",
-        "minQty": "0.1"
     },
     "DYDXUSDT": {
         "pricePrecision": 3,
@@ -958,13 +853,6 @@
         "stepSize": "1",
         "minQty": "1"
     },
-    "NUUSDT": {
-        "pricePrecision": 4,
-        "quantityPrecision": 1,
-        "tickSize": "0.0001",
-        "stepSize": "0.1",
-        "minQty": "0.1"
-    },
     "CTSIUSDT": {
         "pricePrecision": 4,
         "quantityPrecision": 0,
@@ -1013,5 +901,173 @@
         "tickSize": "0.00001",
         "stepSize": "1",
         "minQty": "1"
+    },
+    "FLOWUSDT": {
+        "pricePrecision": 3,
+        "quantityPrecision": 1,
+        "tickSize": "0.001",
+        "stepSize": "0.1",
+        "minQty": "0.1"
+    },
+    "IMXUSDT": {
+        "pricePrecision": 4,
+        "quantityPrecision": 0,
+        "tickSize": "0.0001",
+        "stepSize": "1",
+        "minQty": "1"
+    },
+    "API3USDT": {
+        "pricePrecision": 4,
+        "quantityPrecision": 1,
+        "tickSize": "0.0010",
+        "stepSize": "0.1",
+        "minQty": "0.1"
+    },
+    "GMTUSDT": {
+        "pricePrecision": 5,
+        "quantityPrecision": 0,
+        "tickSize": "0.00010",
+        "stepSize": "1",
+        "minQty": "1"
+    },
+    "APEUSDT": {
+        "pricePrecision": 4,
+        "quantityPrecision": 0,
+        "tickSize": "0.0010",
+        "stepSize": "1",
+        "minQty": "1"
+    },
+    "BNXUSDT": {
+        "pricePrecision": 4,
+        "quantityPrecision": 1,
+        "tickSize": "0.0100",
+        "stepSize": "0.1",
+        "minQty": "0.1"
+    },
+    "WOOUSDT": {
+        "pricePrecision": 5,
+        "quantityPrecision": 0,
+        "tickSize": "0.00001",
+        "stepSize": "1",
+        "minQty": "1"
+    },
+    "FTTUSDT": {
+        "pricePrecision": 4,
+        "quantityPrecision": 1,
+        "tickSize": "0.0001",
+        "stepSize": "0.1",
+        "minQty": "0.1"
+    },
+    "JASMYUSDT": {
+        "pricePrecision": 6,
+        "quantityPrecision": 0,
+        "tickSize": "0.000001",
+        "stepSize": "1",
+        "minQty": "1"
+    },
+    "DARUSDT": {
+        "pricePrecision": 4,
+        "quantityPrecision": 1,
+        "tickSize": "0.0001",
+        "stepSize": "0.1",
+        "minQty": "0.1"
+    },
+    "GALUSDT": {
+        "pricePrecision": 5,
+        "quantityPrecision": 0,
+        "tickSize": "0.00010",
+        "stepSize": "1",
+        "minQty": "1"
+    },
+    "OPUSDT": {
+        "pricePrecision": 7,
+        "quantityPrecision": 1,
+        "tickSize": "0.0001000",
+        "stepSize": "0.1",
+        "minQty": "0.1"
+    },
+    "INJUSDT": {
+        "pricePrecision": 6,
+        "quantityPrecision": 1,
+        "tickSize": "0.001000",
+        "stepSize": "0.1",
+        "minQty": "0.1"
+    },
+    "STGUSDT": {
+        "pricePrecision": 7,
+        "quantityPrecision": 0,
+        "tickSize": "0.0001000",
+        "stepSize": "1",
+        "minQty": "1"
+    },
+    "FOOTBALLUSDT": {
+        "pricePrecision": 5,
+        "quantityPrecision": 2,
+        "tickSize": "0.01000",
+        "stepSize": "0.01",
+        "minQty": "0.01"
+    },
+    "SPELLUSDT": {
+        "pricePrecision": 7,
+        "quantityPrecision": 0,
+        "tickSize": "0.0000001",
+        "stepSize": "1",
+        "minQty": "1"
+    },
+    "1000LUNCUSDT": {
+        "pricePrecision": 7,
+        "quantityPrecision": 0,
+        "tickSize": "0.0001000",
+        "stepSize": "1",
+        "minQty": "1"
+    },
+    "LUNA2USDT": {
+        "pricePrecision": 7,
+        "quantityPrecision": 0,
+        "tickSize": "0.0001000",
+        "stepSize": "1",
+        "minQty": "1"
+    },
+    "LDOUSDT": {
+        "pricePrecision": 6,
+        "quantityPrecision": 0,
+        "tickSize": "0.000100",
+        "stepSize": "1",
+        "minQty": "1"
+    },
+    "CVXUSDT": {
+        "pricePrecision": 6,
+        "quantityPrecision": 0,
+        "tickSize": "0.001000",
+        "stepSize": "1",
+        "minQty": "1"
+    },
+    "ICPUSDT": {
+        "pricePrecision": 6,
+        "quantityPrecision": 0,
+        "tickSize": "0.001000",
+        "stepSize": "1",
+        "minQty": "1"
+    },
+    "APTUSDT": {
+        "pricePrecision": 5,
+        "quantityPrecision": 1,
+        "tickSize": "0.00010",
+        "stepSize": "0.1",
+        "minQty": "0.1"
+    },
+    "QNTUSDT": {
+        "pricePrecision": 6,
+        "quantityPrecision": 1,
+        "tickSize": "0.010000",
+        "stepSize": "0.1",
+        "minQty": "0.1"
+    },
+    "BLUEBIRDUSDT": {
+        "pricePrecision": 5,
+        "quantityPrecision": 1,
+        "tickSize": "0.00100",
+        "stepSize": "0.1",
+        "minQty": "0.1"
     }
 }
