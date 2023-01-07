@@ -5,7 +5,7 @@ from ring_buffer import RingBuffer
 from change_leverage_and_margin_type import change_leverage_and_margin
 # from order_grid_arithmetic import send_arithmetic_order_grid
 from binance.um_futures import UMFutures as Client
-from binance.api import BinanceAPIException
+from binance.api import *
 from threading import Thread, local
 from datetime import datetime
 

@@ -2,6 +2,7 @@
 from order_grid import *
 # from order_grid_arithmetic import send_arithmetic_order_grid
 from binance.um_futures import UMFutures as Client
+from binance.api import *
 from threading import Thread, local
 from datetime import datetime
 from plotly.subplots import make_subplots

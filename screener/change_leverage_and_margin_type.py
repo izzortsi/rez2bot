@@ -2,9 +2,8 @@
 # %%
 
 import json
-from binance.client import Client
-from binance.enums import *
-from binance.exceptions import BinanceAPIException
+from binance.um_futures import UMFutures as Client
+from binance.api import *
 import os
 
 # %%

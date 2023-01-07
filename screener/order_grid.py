@@ -1,7 +1,8 @@
 # %%
 
 from binance.um_futures import UMFutures as Client
-from binance.api import ClientError, ServerError, JSONDecodeError
+from binance.api import *
+# from binance.api import ClientError, ServerError, JSONDecodeError
 from helpers import round_step_size
 import json
 import os

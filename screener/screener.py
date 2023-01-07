@@ -1,7 +1,7 @@
 # %%
 
 from binance.um_futures import UMFutures as Client
-
+from binance.api import *
 from threading import Thread, local
 from datetime import datetime
 from plotly.subplots import make_subplots
@@ -30,7 +30,7 @@ parser.add_argument("-pph", "--price_position_high", type=float, default=0.5)
 parser.add_argument("-wl", "--window_length", type=int, default=52)
 parser.add_argument("-wa", "--atr_window_length", type=int, default=7)
 parser.add_argument("-e", nargs="+", help="my help message", type=float,
-                        default=(0.618, 1.0, 1.618))
+                        default=(1.618, 2.0))
 parser.add_argument("--debug", type=bool, default=False)
 parser.add_argument("--momentum", type=bool, default=False)
 parser.add_argument("-ps", "--plot_screened", type=bool, default=False)
